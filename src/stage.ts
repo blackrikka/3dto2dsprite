@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CCDIKSolver, MMDAnimationHelper } from 'three-stdlib';
 import { Settings } from './types';
+import { MMD_MESH_NAME } from './loaders';
 
 export interface ClipEntry {
   name: string;
@@ -10,16 +12,20 @@ export interface ClipEntry {
   total: number;
 }
 
-const IN_PLACE_RE = /hips|root|pelvis|armature|bip0?01$/i;
+const IN_PLACE_RE = /hips|root|pelvis|armature|bip0?01$|^センター$|^全ての親$/i;
+const MMD_BONE_TRACK_RE = /^(?:[^.\[]*)\.bones\[(.+)\]\.(position|quaternion|scale)$/;
+const MMD_MORPH_TRACK_RE = /^(?:[^.\[]*)\.morphTargetInfluences\[(.+)\]$/;
 
-/** 노드 이름을 비교용으로 정규화 (mixamorig: 접두어 등 무시) */
-const normName = (n: string) => n.toLowerCase().replace(/[^a-z0-9]/g, '').replace(/^mixamorig/, '');
+/** 노드 이름을 비교용으로 정규화 (mixamorig: 접두어 등 무시, 일본어 등 유니코드 문자는 유지) */
+const normName = (n: string) => n.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '').replace(/^mixamorig/, '');
 
 function makeInPlace(clip: THREE.AnimationClip): THREE.AnimationClip {
   const c = clip.clone();
   for (const t of c.tracks) {
     if (!t.name.endsWith('.position')) continue;
-    const node = t.name.slice(0, -'.position'.length);
+    // MMD: "MMDMesh.bones[センター].position" → 본 이름만 꺼낸다
+    const mmdBone = /\.bones\[(.+)\]\.position$/.exec(t.name);
+    const node = mmdBone ? mmdBone[1] : t.name.slice(0, -'.position'.length);
     if (!IN_PLACE_RE.test(node)) continue;
     const v = t.values.slice();
     for (let i = 0; i < v.length; i += 3) {
@@ -56,6 +62,12 @@ export class Stage {
   clips: ClipEntry[] = [];
   activeClip = -1;
   modelVersion = 0;
+
+  /** MMD(PMX/PMD) 모델이면 IK/부여(grant) 솔버를 들고 있다 */
+  mmd: { mesh: THREE.SkinnedMesh; ik: CCDIKSolver; grant: { update(): void } } | null = null;
+
+  /** 믹서가 마지막으로 쓴 본 값(IK 적용 전). AnimationMixer 는 "직전 적용값과 같으면 쓰기를 생략"하므로 IK 가 바꾼 값을 되돌려 둬야 한다. */
+  private mmdBackup: { pos: Float32Array; quat: Float32Array } | null = null;
 
   private actionClip: THREE.AnimationClip | null = null;
   private action: THREE.AnimationAction | null = null;
@@ -122,6 +134,8 @@ export class Stage {
     this.mixer?.stopAllAction();
     this.action = null;
     this.actionClip = null;
+    this.mmd = null;
+    this.mmdBackup = null;
     this.rig.rotation.y = 0;
     this.holder.position.set(0, 0, 0);
 
@@ -129,6 +143,16 @@ export class Stage {
     this.modelName = name;
     this.holder.add(obj);
     this.holder.updateMatrixWorld(true);
+
+    const sk = obj as THREE.SkinnedMesh;
+    const mmdData = sk.isSkinnedMesh ? (sk.geometry.userData.MMD as { iks: never[] } | undefined) : undefined;
+    this.mmd = mmdData
+      ? {
+          mesh: sk,
+          ik: new CCDIKSolver(sk, mmdData.iks),
+          grant: new MMDAnimationHelper().createGrantSolver(sk) as { update(): void },
+        }
+      : null;
 
     // 정규화: 바닥을 y=0, 가로 중심을 원점으로
     const box = new THREE.Box3().setFromObject(obj, true);
@@ -196,6 +220,16 @@ export class Stage {
       const clip = src.clone();
       let matched = 0;
       for (const t of clip.tracks) {
+        const mmd = this.mmd;
+        const bone = MMD_BONE_TRACK_RE.exec(t.name);
+        const morph = MMD_MORPH_TRACK_RE.exec(t.name);
+        if (mmd && (bone || morph)) {
+          // VMD 트랙(".bones[이름].position")은 믹서 루트가 메시일 때만 풀리므로 메시 이름을 앞에 붙인다.
+          if (bone && mmd.mesh.skeleton.getBoneByName(bone[1])) matched++;
+          if (morph) matched++;
+          t.name = MMD_MESH_NAME + t.name.slice(t.name.indexOf('.'));
+          continue;
+        }
         const dot = t.name.indexOf('.');
         if (dot < 0) continue;
         const node = t.name.slice(0, dot);
@@ -279,6 +313,9 @@ export class Stage {
     }
     if (clip !== this.actionClip) {
       this.mixer.stopAllAction();
+      // 이전 모션의 IK 잔여물 제거: 기본 자세로 복귀
+      this.mmd?.mesh.skeleton.pose();
+      this.mmdBackup = null;
       this.actionClip = clip;
       this.action = clip ? this.mixer.clipAction(clip) : null;
       this.bounds = null;
@@ -348,9 +385,30 @@ export class Stage {
 
   private pose(time: number): void {
     if (!this.mixer || !this.action) return;
+    const mmd = this.mmd;
+    const bones = mmd?.mesh.skeleton.bones;
+    if (bones && this.mmdBackup) {
+      // 이전 포즈의 IK/부여 결과를 지우고 믹서가 쓴 값으로 복원 (임의 시간 접근을 결정적으로 만든다)
+      const { pos, quat } = this.mmdBackup;
+      bones.forEach((b, i) => {
+        b.position.fromArray(pos, i * 3);
+        b.quaternion.fromArray(quat, i * 4);
+      });
+    }
     this.action.reset();
     this.action.play();
     this.mixer.setTime(time);
+    if (mmd && bones) {
+      const pos = new Float32Array(bones.length * 3), quat = new Float32Array(bones.length * 4);
+      bones.forEach((b, i) => {
+        b.position.toArray(pos, i * 3);
+        b.quaternion.toArray(quat, i * 4);
+      });
+      this.mmdBackup = { pos, quat };
+      mmd.mesh.updateMatrixWorld(true);
+      mmd.ik.update();
+      mmd.grant.update();
+    }
   }
 
   setPose(dir: number, dirs: number, time: number): void {

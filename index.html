@@ -30,10 +30,11 @@
           <div id="strip"></div>
         </div>
       </main>
-      <div id="drop">파일을 놓아 불러오기<br /><small>.glb · .gltf · .fbx · .obj (모션 전용 파일은 자동으로 모션으로 추가)</small></div>
+      <div id="drop">파일을 놓아 불러오기<br /><small>.glb · .gltf · .fbx · .obj · .pmx · .pmd (MMD 는 텍스처 폴더째 놓으세요) · .vmd 모션</small></div>
     </div>
-    <input type="file" id="fileModel" accept=".glb,.gltf,.fbx,.obj,.bin,.png,.jpg,.jpeg,.webp" multiple hidden />
-    <input type="file" id="fileMotion" accept=".glb,.gltf,.fbx" multiple hidden />
+    <input type="file" id="fileModel" accept=".glb,.gltf,.fbx,.obj,.pmx,.pmd,.vmd,.bin,.png,.jpg,.jpeg,.webp,.bmp,.tga,.sph,.spa" multiple hidden />
+    <input type="file" id="fileFolder" webkitdirectory multiple hidden />
+    <input type="file" id="fileMotion" accept=".glb,.gltf,.fbx,.vmd" multiple hidden />
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

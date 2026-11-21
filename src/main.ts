@@ -4,7 +4,7 @@ import { DEFAULTS, Settings, dirName } from './types';
 import { Form, button, h } from './ui';
 import { PRESETS, RGB, medianCut, parsePalette, presetPalette, rgbToHex } from './palette';
 import { prepare, processFrame } from './pixelate';
-import { loadModelFiles } from './loaders';
+import { MAIN_EXT, ext, loadModelFiles, loadVmd } from './loaders';
 import { createSampleCharacter } from './sample';
 import { Frames, buildJson, buildSheet, downloadBlob, encodeGif, safeName, toBlob } from './exporter';
 
@@ -277,7 +277,7 @@ let toonCtl: ReturnType<Form['slider']>;
 function refreshClipSelect(): void {
   clipSelect.replaceChildren(new Option('(정지 포즈)', '-1'));
   stage.clips.forEach((c, i) => {
-    const label = c.source && c.source !== stage.modelName ? `${c.name} · ${c.source}` : c.name;
+    const label = c.source && c.source !== stage.modelName && c.source !== c.name ? `${c.name} · ${c.source}` : c.name;
     clipSelect.appendChild(new Option(`${label} (${c.clip.duration.toFixed(2)}s)`, String(i)));
   });
   clipSelect.value = String(stage.activeClip);
@@ -435,13 +435,26 @@ function loadSample(): void {
 async function addMotionFiles(files: File[]): Promise<void> {
   let first = -1;
   for (const f of files) {
-    const L = await loadModelFiles([f]);
-    if (!L.animations.length) {
-      setStatus(`${f.name}: 모션이 들어 있지 않습니다.`, 'warn');
-      continue;
-    }
     const before = stage.clips.length;
-    stage.addClips(L.animations, f.name.replace(/\.[^.]+$/, ''));
+    if (ext(f.name) === 'vmd') {
+      if (!stage.mmd) {
+        setStatus(`${f.name}: VMD 모션은 PMX/PMD 모델에서만 쓸 수 있습니다.`, 'warn');
+        continue;
+      }
+      const clip = await loadVmd(f, stage.mmd.mesh);
+      if (!clip.tracks.length) {
+        setStatus(`${f.name}: 이 모델의 본 이름과 맞는 모션 트랙이 없습니다.`, 'warn');
+        continue;
+      }
+      stage.addClips([clip], clip.name);
+    } else {
+      const L = await loadModelFiles([f]);
+      if (!L.animations.length) {
+        setStatus(`${f.name}: 모션이 들어 있지 않습니다.`, 'warn');
+        continue;
+      }
+      stage.addClips(L.animations, f.name.replace(/\.[^.]+$/, ''));
+    }
     if (first < 0) first = before;
   }
   if (first < 0) return;
@@ -465,6 +478,11 @@ async function openFiles(files: File[], asMotion = false): Promise<void> {
       await addMotionFiles(files);
       return;
     }
+    const vmds = files.filter((f) => ext(f.name) === 'vmd');
+    if (!files.some((f) => MAIN_EXT.includes(ext(f.name))) && vmds.length) {
+      await addMotionFiles(vmds); // VMD 만 선택한 경우: 현재 MMD 모델에 모션으로 추가
+      return;
+    }
     const L = await loadModelFiles(files);
     if (!L.hasMesh) {
       if (L.animations.length) {
@@ -475,10 +493,14 @@ async function openFiles(files: File[], asMotion = false): Promise<void> {
     }
     stage.setModel(L.object, L.animations, L.name);
     afterModelChange();
+    const hint = L.mmd
+      ? ' (MMD: 텍스처가 안 보이면 "폴더 열기"로 모델 폴더째 불러오세요. 모션은 .vmd 를 "모션 추가"로)'
+      : '';
     setStatus(
       `불러옴: ${L.name} · 모션 ${L.animations.length}개` +
-        (L.animations.length ? '' : ' (모션이 없으면 "모션 추가"로 FBX/GLB 모션을 불러오세요)'),
+        (L.animations.length ? '' : hint || ' (모션이 없으면 "모션 추가"로 FBX/GLB 모션을 불러오세요)'),
     );
+    if (L.mmd && vmds.length) await addMotionFiles(vmds);
   } catch (e) {
     console.error(e);
     setStatus(`불러오기 실패: ${(e as Error).message}`, 'err');
@@ -488,14 +510,20 @@ async function openFiles(files: File[], asMotion = false): Promise<void> {
 const topActions = $('topActions');
 const fileModel = $<HTMLInputElement>('fileModel');
 const fileMotion = $<HTMLInputElement>('fileMotion');
+const fileFolder = $<HTMLInputElement>('fileFolder');
 topActions.append(
   button('모델 열기', 'primary', () => fileModel.click()),
+  button('폴더 열기', '', () => fileFolder.click()),
   button('모션 추가', '', () => fileMotion.click()),
   button('샘플 캐릭터', '', loadSample),
 );
 fileModel.addEventListener('change', () => {
   void openFiles([...(fileModel.files ?? [])]);
   fileModel.value = '';
+});
+fileFolder.addEventListener('change', () => {
+  void openFiles([...(fileFolder.files ?? [])]);
+  fileFolder.value = '';
 });
 fileMotion.addEventListener('change', () => {
   void openFiles([...(fileMotion.files ?? [])], true);
@@ -519,12 +547,37 @@ window.addEventListener('dragleave', (e) => {
     dropEl.classList.remove('show');
   }
 });
+/** 드롭된 항목에서 파일을 모은다. 폴더는 재귀적으로 펼친다 (MMD 모델 폴더째 드롭 지원). */
+async function filesFromDrop(dt: DataTransfer): Promise<File[]> {
+  // 이벤트가 끝나면 dt 가 비워지므로 첫 await 이전에 동기적으로 엔트리를 확보한다.
+  const entries = [...dt.items]
+    .filter((i) => i.kind === 'file')
+    .map((i) => i.webkitGetAsEntry?.() ?? null)
+    .filter((x): x is FileSystemEntry => x !== null);
+  if (!entries.length) return [...dt.files];
+  const out: File[] = [];
+  const walk = async (en: FileSystemEntry): Promise<void> => {
+    if (en.isFile) {
+      out.push(await new Promise<File>((res, rej) => (en as FileSystemFileEntry).file(res, rej)));
+    } else if (en.isDirectory) {
+      const reader = (en as FileSystemDirectoryEntry).createReader();
+      for (;;) {
+        const batch = await new Promise<FileSystemEntry[]>((res, rej) => reader.readEntries(res, rej));
+        if (!batch.length) break;
+        for (const c of batch) await walk(c);
+      }
+    }
+  };
+  for (const en of entries) await walk(en);
+  return out;
+}
+
 window.addEventListener('drop', (e) => {
   if (!hasFiles(e)) return;
   e.preventDefault();
   dragDepth = 0;
   dropEl.classList.remove('show');
-  void openFiles([...(e.dataTransfer?.files ?? [])]);
+  if (e.dataTransfer) void filesFromDrop(e.dataTransfer).then((files) => openFiles(files));
 });
 
 // ---------------------------------------------------------------------------
