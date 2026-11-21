@@ -11,6 +11,15 @@ npm run dev      # http://localhost:5173
 npm run build    # dist/ 에 정적 파일 생성 (아무 정적 호스팅에 올리면 됩니다)
 ```
 
+## Windows 실행 파일 (Rust)
+
+`release/windows-x64/` 에 미리 빌드된 `sprite3d2d.exe` 가 들어 있습니다 (`windows-x64.zip` 도 동일).
+
+- 구성: Rust + [wry](https://github.com/tauri-apps/wry)/[tao](https://github.com/tauri-apps/tao) 로 만든 얇은 셸이 WebView2 안에서 웹 앱(`dist/`)을 실행합니다. 웹 앱은 exe 안에 내장되어 있어 인터넷/서버가 필요 없습니다.
+- **`sprite3d2d.exe` 와 `WebView2Loader.dll` 을 같은 폴더에 두세요.** Edge WebView2 런타임이 필요합니다 (Windows 11 / 최신 Windows 10 은 기본 설치).
+- 내보내기 파일은 "다운로드" 폴더에 저장됩니다.
+- 다시 빌드 (Linux, mingw-w64 필요): `./desktop/build-windows.sh`
+
 ## 사용법
 
 1. **모델 열기** (또는 창에 파일 드래그&드롭): `.glb` `.gltf` `.fbx` `.obj`
