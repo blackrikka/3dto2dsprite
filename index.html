@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>3D → 도트 스프라이트 변환기</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%236ea8ff'/%3E%3Crect x='4' y='3' width='8' height='4' fill='%23fff'/%3E%3Crect x='3' y='7' width='10' height='6' fill='%231b1e25'/%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <div id="app">
+      <header>
+        <h1>3D → 도트 스프라이트 변환기</h1>
+        <div class="actions" id="topActions"></div>
+        <div id="status" role="status"></div>
+      </header>
+      <aside id="panel"></aside>
+      <main>
+        <div class="views">
+          <section class="view">
+            <div class="label">3D 뷰 <small>(드래그: 회전 · 휠: 확대 · 우클릭: 이동)</small></div>
+            <div id="viewport"></div>
+          </section>
+          <section class="view">
+            <div class="label">도트 미리보기 <small id="pixelInfo"></small></div>
+            <div id="pixelWrap"><canvas id="pixel"></canvas></div>
+          </section>
+        </div>
+        <div id="timeline">
+          <div class="controls" id="tlControls"></div>
+          <div id="strip"></div>
+        </div>
+      </main>
+      <div id="drop">파일을 놓아 불러오기<br /><small>.glb · .gltf · .fbx · .obj (모션 전용 파일은 자동으로 모션으로 추가)</small></div>
+    </div>
+    <input type="file" id="fileModel" accept=".glb,.gltf,.fbx,.obj,.bin,.png,.jpg,.jpeg,.webp" multiple hidden />
+    <input type="file" id="fileMotion" accept=".glb,.gltf,.fbx" multiple hidden />
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

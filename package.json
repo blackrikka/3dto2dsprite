@@ -1,0 +1,21 @@
+{
+  "name": "3dto2dsprite",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "3D 모델 + 모션 → 2D 도트 스프라이트 변환 편집기",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "gifenc": "^1.0.3",
+    "three": "^0.187.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.187.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8"
+  }
+}
