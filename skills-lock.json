@@ -1,0 +1,243 @@
+{
+  "version": 2,
+  "skills": {
+    "ace-step": {
+      "source": "skills-collective/skills",
+      "commit": "f28664df57dc6dff8a4ddbc458b5c2bfff6d9f63",
+      "sourceType": "github",
+      "skillPath": "ace-step/SKILL.md",
+      "computedHash": "55506bcec721cc313f370be74d1ee7da441abd462c05f13099a9cdb9144971fd"
+    },
+    "ai-avatar-video": {
+      "source": "skills-collective/skills",
+      "commit": "f28664df57dc6dff8a4ddbc458b5c2bfff6d9f63",
+      "sourceType": "github",
+      "skillPath": "ai-avatar-video/SKILL.md",
+      "computedHash": "c57c21b0439cb333c411272065accbafcd0db88ec0553a94dea01ce661e1b92b"
+    },
+    "ai-image-generation": {
+      "source": "skills-collective/skills",
+      "commit": "f28664df57dc6dff8a4ddbc458b5c2bfff6d9f63",
+      "sourceType": "github",
+      "skillPath": "ai-image-generation/SKILL.md",
+      "computedHash": "7b880ee9ea0ef160a90999972fe95705ba7a7788b59029bbaec7bb4f959730ae"
+    },
+    "ai-music": {
+      "source": "skills-collective/skills",
+      "commit": "f28664df57dc6dff8a4ddbc458b5c2bfff6d9f63",
+      "sourceType": "github",
+      "skillPath": "ai-music/SKILL.md",
+      "computedHash": "b244d1aac79a5c32c6352e789442db2158dccc638e8841c93c0e60a2487e9e8d"
+    },
+    "ai-video-generation": {
+      "source": "skills-collective/skills",
+      "commit": "f28664df57dc6dff8a4ddbc458b5c2bfff6d9f63",
+      "sourceType": "github",
+      "skillPath": "ai-video-generation/SKILL.md",
+      "computedHash": "d61806210e7e0913cd5e994b60ad8bbc8065a488f2c6f9923ffbe9d8544bd636"
+    },
+    "codex-pet": {
+      "source": "skills-collective/skills",
+      "commit": "f28664df57dc6dff8a4ddbc458b5c2bfff6d9f63",
+      "sourceType": "github",
+      "skillPath": "codex-pet/SKILL.md",
+      "computedHash": "d3367f19be0dd50d37d7ebf993f7082e7c8b568e72252df19fa80dd443c31e37"
+    },
+    "comfyui-workflows": {
+      "source": "skills-collective/skills",
+      "commit": "f28664df57dc6dff8a4ddbc458b5c2bfff6d9f63",
+      "sourceType": "github",
+      "skillPath": "plugins/runcomfy/skills/comfyui-workflows/SKILL.md",
+      "computedHash": "0ecb68d8231779be32f6bbeeb864acec77da40eeeaf917d3094edf1b79fe32b8"
+    },
+    "controlnet-pose": {
+      "source": "skills-collective/skills",
+      "commit": "f28664df57dc6dff8a4ddbc458b5c2bfff6d9f63",
+      "sourceType": "github",
+      "skillPath": "controlnet-pose/SKILL.md",
+      "computedHash": "ee223775067bac316e640f900acb766544dfd9f929a387ceed2a5e84e771439b"
+    },
+    "elevenlabs-music-generation": {
+      "source": "skills-collective/skills",
+      "commit": "f28664df57dc6dff8a4ddbc458b5c2bfff6d9f63",
+      "sourceType": "github",
+      "skillPath": "elevenlabs-music-generation/SKILL.md",
+      "computedHash": "b8cba1ef04f7b7aca58f7a46a2098434cf6d62f262c4f99f211e5dbafeaa3fdb"
+    },
+    "face-swap": {
+      "source": "skills-collective/skills",
+      "commit": "f28664df57dc6dff8a4ddbc458b5c2bfff6d9f63",
+      "sourceType": "github",
+      "skillPath": "face-swap/SKILL.md",
+      "computedHash": "ffeaa8523afd9058803d38793051de993b9c59097a7b6f3f8da1149c6db315fc"
+    },
+    "flux-2-klein": {
+      "source": "skills-collective/skills",
+      "commit": "f28664df57dc6dff8a4ddbc458b5c2bfff6d9f63",
+      "sourceType": "github",
+      "skillPath": "flux-2-klein/SKILL.md",
+      "computedHash": "0d8aa04c6addd9b94d730b61a3dddafd04f6b9401e7963c84c3a97c280d47c62"
+    },
+    "flux-kontext": {
+      "source": "skills-collective/skills",
+      "commit": "f28664df57dc6dff8a4ddbc458b5c2bfff6d9f63",
+      "sourceType": "github",
+      "skillPath": "flux-kontext/SKILL.md",
+      "computedHash": "eab1ab480afb5263662cad6435e83d5a35a465aed71e26a7406ef89bae5fbb1f"
+    },
+    "generate-image": {
+      "source": "skills-collective/skills",
+      "commit": "f28664df57dc6dff8a4ddbc458b5c2bfff6d9f63",
+      "sourceType": "github",
+      "skillPath": "plugins/runcomfy/skills/generate-image/SKILL.md",
+      "computedHash": "379608162f729ce6023d1a4a68780b7ed9384c1dcbc865ac7e970f61362dc17a"
+    },
+    "generate-video": {
+      "source": "skills-collective/skills",
+      "commit": "f28664df57dc6dff8a4ddbc458b5c2bfff6d9f63",
+      "sourceType": "github",
+      "skillPath": "plugins/runcomfy/skills/generate-video/SKILL.md",
+      "computedHash": "978984d8a74ea9e75435171036fc263824569d85c82242e3691375aa2d58017f"
+    },
+    "gpt-image-2": {
+      "source": "skills-collective/skills",
+      "commit": "f28664df57dc6dff8a4ddbc458b5c2bfff6d9f63",
+      "sourceType": "github",
+      "skillPath": "gpt-image-2/SKILL.md",
+      "computedHash": "70cfab12b9f2e13a46f54976bd4f3eb7f3cc356a1e052d33241ca1b7a9d211c5"
+    },
+    "gpt-image-edit": {
+      "source": "skills-collective/skills",
+      "commit": "f28664df57dc6dff8a4ddbc458b5c2bfff6d9f63",
+      "sourceType": "github",
+      "skillPath": "gpt-image-edit/SKILL.md",
+      "computedHash": "c2b7c34cec759141b6c012953920cb18fd8709f05834e2b62a8240dee7c03ab7"
+    },
+    "happyhorse-1-0": {
+      "source": "skills-collective/skills",
+      "commit": "f28664df57dc6dff8a4ddbc458b5c2bfff6d9f63",
+      "sourceType": "github",
+      "skillPath": "happyhorse-1-0/SKILL.md",
+      "computedHash": "50c0960d5cb89dadd35572053a70702e15b0da143984e8d2094feca2e40e80ba"
+    },
+    "image-edit": {
+      "source": "skills-collective/skills",
+      "commit": "f28664df57dc6dff8a4ddbc458b5c2bfff6d9f63",
+      "sourceType": "github",
+      "skillPath": "image-edit/SKILL.md",
+      "computedHash": "820529a08e202cfd24fc025ca32d2b784607952abc11b9ab60a3e4e4fcad04d1"
+    },
+    "image-inpainting": {
+      "source": "skills-collective/skills",
+      "commit": "f28664df57dc6dff8a4ddbc458b5c2bfff6d9f63",
+      "sourceType": "github",
+      "skillPath": "image-inpainting/SKILL.md",
+      "computedHash": "cbc7bf87bade015b022f683f7d8e1e11f7c3c35bba04d9b6a5faeb7de6945bbb"
+    },
+    "image-outpainting": {
+      "source": "skills-collective/skills",
+      "commit": "f28664df57dc6dff8a4ddbc458b5c2bfff6d9f63",
+      "sourceType": "github",
+      "skillPath": "image-outpainting/SKILL.md",
+      "computedHash": "634ae5d338dd067cb6e6cbd9c6cd0c97d052518d3727f33427a94fce14381470"
+    },
+    "image-to-video": {
+      "source": "skills-collective/skills",
+      "commit": "f28664df57dc6dff8a4ddbc458b5c2bfff6d9f63",
+      "sourceType": "github",
+      "skillPath": "image-to-video/SKILL.md",
+      "computedHash": "1512174a0581b45b4f40d52eea6ed50d257dae611cd5f90671aa080a6138b17b"
+    },
+    "kling-3-0": {
+      "source": "skills-collective/skills",
+      "commit": "f28664df57dc6dff8a4ddbc458b5c2bfff6d9f63",
+      "sourceType": "github",
+      "skillPath": "kling-3-0/SKILL.md",
+      "computedHash": "111704adf0de8d97098e311917b26ab9748f22c99e091d23e9ca4758d62a1f18"
+    },
+    "lipsync": {
+      "source": "skills-collective/skills",
+      "commit": "f28664df57dc6dff8a4ddbc458b5c2bfff6d9f63",
+      "sourceType": "github",
+      "skillPath": "lipsync/SKILL.md",
+      "computedHash": "05b6a828dc9f2fbaff4ed324864c6156a8b9bec7ac5f3be640c2ec0cbdf6520d"
+    },
+    "lora-training": {
+      "source": "skills-collective/skills",
+      "commit": "f28664df57dc6dff8a4ddbc458b5c2bfff6d9f63",
+      "sourceType": "github",
+      "skillPath": "plugins/runcomfy/skills/lora-training/SKILL.md",
+      "computedHash": "8106323713dc501095fa0226dcbb255e0d9f68826eb96ecd815ad3b9eb8a1d3e"
+    },
+    "nano-banana-2": {
+      "source": "skills-collective/skills",
+      "commit": "f28664df57dc6dff8a4ddbc458b5c2bfff6d9f63",
+      "sourceType": "github",
+      "skillPath": "nano-banana-2/SKILL.md",
+      "computedHash": "94218dc373980e0d80578f09d7155371d279387cd2d3a61a0321445d2a802160"
+    },
+    "nano-banana-edit": {
+      "source": "skills-collective/skills",
+      "commit": "f28664df57dc6dff8a4ddbc458b5c2bfff6d9f63",
+      "sourceType": "github",
+      "skillPath": "nano-banana-edit/SKILL.md",
+      "computedHash": "0c55c515f2979cc4df572e7d8522b6200d48f505806e83226e2d5845c8763867"
+    },
+    "relight": {
+      "source": "skills-collective/skills",
+      "commit": "f28664df57dc6dff8a4ddbc458b5c2bfff6d9f63",
+      "sourceType": "github",
+      "skillPath": "relight/SKILL.md",
+      "computedHash": "fe5c0d8e80c2705092fd76e348994ca4aaa49ea0cbea761aba9af82f3c0964cf"
+    },
+    "runcomfy-cli": {
+      "source": "skills-collective/skills",
+      "commit": "f28664df57dc6dff8a4ddbc458b5c2bfff6d9f63",
+      "sourceType": "github",
+      "skillPath": "runcomfy-cli/SKILL.md",
+      "computedHash": "620659b7b052312b29b412e02e87d12ee65959bf7eff31ca1ba2cdc6a43c4298"
+    },
+    "seedance-v2": {
+      "source": "skills-collective/skills",
+      "commit": "f28664df57dc6dff8a4ddbc458b5c2bfff6d9f63",
+      "sourceType": "github",
+      "skillPath": "seedance-v2/SKILL.md",
+      "computedHash": "2eafeef4618512c9048ffae2ead8dd6922ac370e15fee6326d6af515cba529fb"
+    },
+    "video-edit": {
+      "source": "skills-collective/skills",
+      "commit": "f28664df57dc6dff8a4ddbc458b5c2bfff6d9f63",
+      "sourceType": "github",
+      "skillPath": "video-edit/SKILL.md",
+      "computedHash": "b666f441d10b6b387be2c88fd1dba9954b8e5baf179c8f3ee85984654e2f51db"
+    },
+    "video-extend": {
+      "source": "skills-collective/skills",
+      "commit": "f28664df57dc6dff8a4ddbc458b5c2bfff6d9f63",
+      "sourceType": "github",
+      "skillPath": "video-extend/SKILL.md",
+      "computedHash": "f8b664e90b323a126711e6ae361971affb2685c67ac40beb101e5a8b0fe08d90"
+    },
+    "video-inpainting": {
+      "source": "skills-collective/skills",
+      "commit": "f28664df57dc6dff8a4ddbc458b5c2bfff6d9f63",
+      "sourceType": "github",
+      "skillPath": "video-inpainting/SKILL.md",
+      "computedHash": "f6750dd1f79c8d3438a692060866d11fa1d13f70f20062916acbc3bbdb92e17b"
+    },
+    "video-outpainting": {
+      "source": "skills-collective/skills",
+      "commit": "f28664df57dc6dff8a4ddbc458b5c2bfff6d9f63",
+      "sourceType": "github",
+      "skillPath": "video-outpainting/SKILL.md",
+      "computedHash": "3bfe4795b834be4e930065b7fc9476f08c963e2082dcd0e3f5c799103ef7ec40"
+    },
+    "wan-2-7": {
+      "source": "skills-collective/skills",
+      "commit": "f28664df57dc6dff8a4ddbc458b5c2bfff6d9f63",
+      "sourceType": "github",
+      "skillPath": "wan-2-7/SKILL.md",
+      "computedHash": "cbca31f6b628ecf253440234f8d720fbd9b92da302c09206a56add406a381080"
+    }
+  }
+}
