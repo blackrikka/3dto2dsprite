@@ -9,7 +9,7 @@ use tao::{
     dpi::LogicalSize,
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
-    window::WindowBuilder,
+    window::{Icon, WindowBuilder},
 };
 use wry::{
     http::{header::CONTENT_TYPE, Response},
@@ -38,9 +38,15 @@ fn data_dir() -> Option<PathBuf> {
     Some(base.join("sprite3d2d"))
 }
 
+/// 32x32 RGBA 원시 데이터 (desktop/make-icon.py 로 생성)
+fn window_icon() -> Option<Icon> {
+    Icon::from_rgba(include_bytes!("../icon/icon32.rgba").to_vec(), 32, 32).ok()
+}
+
 fn main() -> wry::Result<()> {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
+        .with_window_icon(window_icon())
         .with_title("3D → 도트 스프라이트 변환기")
         .with_inner_size(LogicalSize::new(1500.0, 900.0))
         .with_min_inner_size(LogicalSize::new(900.0, 600.0))

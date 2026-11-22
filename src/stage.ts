@@ -108,20 +108,41 @@ export class Stage {
     this.viewCam.updateProjectionMatrix();
   }
 
+  private viewInfo = { radius: 1, cy: 0.5 };
+
   private frameViewport(radius: number, cy: number): void {
-    const dist = radius * 3.2;
-    this.viewCam.position.set(dist * 0.55, cy + radius * 0.7, dist);
-    this.viewCam.near = radius * 0.02;
-    this.viewCam.far = radius * 60;
-    this.viewCam.updateProjectionMatrix();
-    this.controls.target.set(0, cy, 0);
-    this.controls.update();
+    this.viewInfo = { radius, cy };
+    this.viewDefault();
     const g = Math.max(2, Math.ceil(radius * 2.5));
     this.scene.remove(this.grid);
     this.grid.geometry.dispose();
     this.grid = new THREE.GridHelper(g * 2, g * 8, 0x5a6275, 0x3a4050);
     this.grid.layers.set(1);
     this.scene.add(this.grid);
+  }
+
+  private placeView(radius: number, cy: number, dir: THREE.Vector3): void {
+    const dist = radius * 3.2;
+    this.viewCam.position.copy(dir).normalize().multiplyScalar(dist).add(new THREE.Vector3(0, cy, 0));
+    this.viewCam.near = radius * 0.02;
+    this.viewCam.far = radius * 60;
+    this.viewCam.updateProjectionMatrix();
+    this.controls.target.set(0, cy, 0);
+    this.controls.update();
+  }
+
+  /** 기본 3/4 시점 */
+  viewDefault(): void {
+    const { radius, cy } = this.viewInfo;
+    this.placeView(radius, cy, new THREE.Vector3(0.55, 0.7 * 0.8, 1));
+  }
+
+  /** 스프라이트 카메라와 같은 방향(기울기)에서 보는 시점. pitch 를 0 으로 주면 정면 */
+  viewSprite(pitchDeg: number): void {
+    const b = this.bounds;
+    const { radius, cy } = b ?? this.viewInfo;
+    const p = THREE.MathUtils.degToRad(pitchDeg);
+    this.placeView(radius, cy, new THREE.Vector3(0, Math.sin(p), Math.cos(p)));
   }
 
   // --- 모델 --------------------------------------------------------------

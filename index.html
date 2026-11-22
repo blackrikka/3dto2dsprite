@@ -17,12 +17,13 @@
       <main>
         <div class="views">
           <section class="view">
-            <div class="label">3D 뷰 <small>(드래그: 회전 · 휠: 확대 · 우클릭: 이동)</small></div>
+            <div class="label">3D 뷰 <small>드래그 회전 · 휠 확대 · 우클릭 이동</small><span class="grow"></span><span class="ctl" id="viewCtl"></span></div>
             <div id="viewport"></div>
           </section>
           <section class="view">
-            <div class="label">도트 미리보기 <small id="pixelInfo"></small></div>
+            <div class="label">도트 미리보기<span class="grow"></span><span class="ctl" id="pixelCtl"></span></div>
             <div id="pixelWrap"><canvas id="pixel"></canvas></div>
+            <div class="foot" id="pixelInfo"></div>
           </section>
         </div>
         <div id="timeline">

@@ -36,6 +36,7 @@ export interface Settings {
   outlineColor: string;
   // 내보내기
   exportScale: number;
+  sheetPadding: number;
 }
 
 export const DEFAULTS: Settings = {
@@ -68,6 +69,7 @@ export const DEFAULTS: Settings = {
   outline: true,
   outlineColor: '#1a1020',
   exportScale: 1,
+  sheetPadding: 0,
 };
 
 const COMPASS8 = ['S', 'SE', 'E', 'NE', 'N', 'NW', 'W', 'SW'];

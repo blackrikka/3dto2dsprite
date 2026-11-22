@@ -1,4 +1,5 @@
 import { GIFEncoder } from 'gifenc';
+import { zipSync } from 'fflate';
 import { RGB, medianCut } from './palette';
 import { dirName } from './types';
 
@@ -30,20 +31,38 @@ function frameToCanvas(px: Uint8ClampedArray, w: number, h: number): HTMLCanvasE
   return c;
 }
 
-/** 행 = 방향, 열 = 프레임 인 스프라이트 시트 캔버스 */
-export function buildSheet(frames: Frames, w: number, h: number, scale: number): HTMLCanvasElement {
+/**
+ * 행 = 방향, 열 = 프레임 인 스프라이트 시트 캔버스.
+ * pad: 각 프레임 둘레의 투명 여백(px, 배율 적용 전). 텍스처 필터링 시 번짐 방지용.
+ */
+export function buildSheet(frames: Frames, w: number, h: number, scale: number, pad = 0): HTMLCanvasElement {
   const rows = frames.length, cols = frames[0]?.length ?? 0;
+  const cw = (w + 2 * pad) * scale, ch = (h + 2 * pad) * scale;
   const sheet = document.createElement('canvas');
-  sheet.width = cols * w * scale;
-  sheet.height = rows * h * scale;
+  sheet.width = cols * cw;
+  sheet.height = rows * ch;
   const ctx = sheet.getContext('2d')!;
   ctx.imageSmoothingEnabled = false;
   frames.forEach((row, d) =>
     row.forEach((px, i) => {
-      ctx.drawImage(frameToCanvas(px, w, h), i * w * scale, d * h * scale, w * scale, h * scale);
+      ctx.drawImage(frameToCanvas(px, w, h), i * cw + pad * scale, d * ch + pad * scale, w * scale, h * scale);
     }),
   );
   return sheet;
+}
+
+/** 프레임마다 PNG 한 장씩 담은 zip (방향별 폴더). */
+export async function buildZip(frames: Frames, w: number, h: number, scale: number, base: string): Promise<Uint8Array> {
+  const files: Record<string, Uint8Array> = {};
+  const dirs = frames.length;
+  for (let d = 0; d < dirs; d++) {
+    const dn = dirName(d, dirs);
+    for (let i = 0; i < frames[d].length; i++) {
+      const blob = await toBlob(buildSheet([[frames[d][i]]], w, h, scale));
+      files[`${base}/${dn}/${base}_${dn}_${String(i).padStart(2, '0')}.png`] = new Uint8Array(await blob.arrayBuffer());
+    }
+  }
+  return zipSync(files, { level: 0 }); // PNG 는 이미 압축되어 있다
 }
 
 export interface SheetMeta {
@@ -56,18 +75,21 @@ export interface SheetMeta {
   dirs: number;
   count: number;
   fps: number;
+  pad: number;
 }
 
 /** Aseprite/TexturePacker "hash" 형식과 호환되는 JSON (Phaser, Godot 플러그인, Unity 임포터 등에서 사용 가능) */
 export function buildJson(m: SheetMeta): string {
   const fw = m.w * m.scale, fh = m.h * m.scale;
+  const px = m.pad * m.scale;
+  const cw = fw + 2 * px, ch = fh + 2 * px;
   const frames: Record<string, unknown> = {};
   const tags: unknown[] = [];
   for (let d = 0; d < m.dirs; d++) {
     const dn = dirName(d, m.dirs);
     for (let i = 0; i < m.count; i++) {
       frames[`${m.name}_${dn}_${String(i).padStart(2, '0')}`] = {
-        frame: { x: i * fw, y: d * fh, w: fw, h: fh },
+        frame: { x: i * cw + px, y: d * ch + px, w: fw, h: fh },
         rotated: false,
         trimmed: false,
         spriteSourceSize: { x: 0, y: 0, w: fw, h: fh },
@@ -85,8 +107,9 @@ export function buildJson(m: SheetMeta): string {
         version: '0.1',
         image: m.image,
         format: 'RGBA8888',
-        size: { w: m.count * fw, h: m.dirs * fh },
+        size: { w: m.count * cw, h: m.dirs * ch },
         scale: String(m.scale),
+        padding: px,
         frameTags: tags,
         layout: 'rows=directions, cols=frames',
         directions: Array.from({ length: m.dirs }, (_, d) => dirName(d, m.dirs)),

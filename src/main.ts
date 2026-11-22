@@ -6,12 +6,74 @@ import { PRESETS, RGB, medianCut, parsePalette, presetPalette, rgbToHex } from '
 import { prepare, processFrame } from './pixelate';
 import { MAIN_EXT, ext, loadModelFiles, loadVmd } from './loaders';
 import { createSampleCharacter } from './sample';
-import { Frames, buildJson, buildSheet, downloadBlob, encodeGif, safeName, toBlob } from './exporter';
+import { Frames, buildJson, buildSheet, buildZip, downloadBlob, encodeGif, safeName, toBlob } from './exporter';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
 
-const settings: Settings = { ...DEFAULTS };
+// ---------------------------------------------------------------------------
+// 설정 저장/복원 (localStorage) — 읽기/쓰기 실패(비공개 모드 등)는 조용히 무시한다.
+// ---------------------------------------------------------------------------
+const SETTINGS_KEY = 'sprite3d2d.settings.v1';
+const PREFS_KEY = 'sprite3d2d.prefs.v1';
+
+function sanitizeSettings(raw: unknown): Settings {
+  const out: Settings = { ...DEFAULTS };
+  if (!raw || typeof raw !== 'object') return out;
+  const r = raw as Record<string, unknown>;
+  const o = out as unknown as Record<string, unknown>;
+  for (const k of Object.keys(DEFAULTS)) {
+    const v = r[k];
+    if (typeof v === typeof o[k] && !(typeof v === 'number' && !Number.isFinite(v))) o[k] = v;
+  }
+  const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, Math.round(v)));
+  out.width = clamp(out.width, 8, 512);
+  out.height = clamp(out.height, 8, 512);
+  out.fps = clamp(out.fps, 1, 60);
+  out.frameCount = clamp(out.frameCount, 1, 240);
+  out.colors = clamp(out.colors, 2, 64);
+  out.toonSteps = clamp(out.toonSteps, 2, 6);
+  out.sheetPadding = clamp(out.sheetPadding, 0, 16);
+  if (![1, 4, 8, 16].includes(out.directions)) out.directions = DEFAULTS.directions;
+  if (![1, 2, 4, 8].includes(out.exportScale)) out.exportScale = DEFAULTS.exportScale;
+  if (!['auto', 'pico8', 'gameboy', 'sweetie16', 'custom', 'none'].includes(out.paletteMode)) out.paletteMode = DEFAULTS.paletteMode;
+  if (!['original', 'toon'].includes(out.shading)) out.shading = DEFAULTS.shading;
+  return out;
+}
+
+function readStore(key: string): unknown {
+  try {
+    return JSON.parse(localStorage.getItem(key) ?? 'null');
+  } catch {
+    return null;
+  }
+}
+
+interface Prefs {
+  view: 'single' | 'all';
+  bg: 'checker' | 'dark' | 'light' | 'green' | 'magenta';
+}
+const BG_LABELS: [Prefs['bg'], string][] = [
+  ['checker', '체크무늬'], ['dark', '어두운 배경'], ['light', '밝은 배경'], ['green', '초록(크로마키)'], ['magenta', '마젠타'],
+];
+const prefs: Prefs = { view: 'single', bg: 'checker', ...(readStore(PREFS_KEY) as Partial<Prefs> | null) };
+if (!['single', 'all'].includes(prefs.view)) prefs.view = 'single';
+if (!BG_LABELS.some(([k]) => k === prefs.bg)) prefs.bg = 'checker';
+
+const settings: Settings = sanitizeSettings(readStore(SETTINGS_KEY));
+let saveTimer = 0;
+function saveSoon(): void {
+  clearTimeout(saveTimer);
+  saveTimer = window.setTimeout(() => {
+    try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+      localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+    } catch {
+      /* 저장 불가 환경: 무시 */
+    }
+  }, 300);
+}
+
 const stage = new Stage($('viewport'));
 const pixelCanvas = $<HTMLCanvasElement>('pixel');
 const pixelCtx = pixelCanvas.getContext('2d')!;
@@ -154,29 +216,52 @@ function showSwatches(pal: RGB[] | null): void {
 // ---------------------------------------------------------------------------
 // 미리보기/타임라인
 // ---------------------------------------------------------------------------
-let lastDrawn: Uint8ClampedArray | null = null;
+let lastDrawn: Uint8ClampedArray[] = [];
 let lastDrawnSize = '';
 
+const allCols = () => Math.min(4, settings.directions);
+
 function drawPreview(): void {
-  const px = getFrame(curDir, curFrame);
-  const size = `${settings.width}x${settings.height}`;
-  if (px === lastDrawn && size === lastDrawnSize) return;
-  if (pixelCanvas.width !== settings.width || pixelCanvas.height !== settings.height) {
-    pixelCanvas.width = settings.width;
-    pixelCanvas.height = settings.height;
+  const dirs = prefs.view === 'all' ? Array.from({ length: settings.directions }, (_, d) => d) : [curDir];
+  const frames = dirs.map((d) => getFrame(d, curFrame));
+  const { width: w, height: h } = settings;
+  const cols = prefs.view === 'all' ? allCols() : 1;
+  const rows = Math.ceil(dirs.length / cols);
+  const size = `${cols * w}x${rows * h}`;
+  if (size === lastDrawnSize && frames.length === lastDrawn.length && frames.every((f, i) => f === lastDrawn[i])) return;
+  if (pixelCanvas.width !== cols * w || pixelCanvas.height !== rows * h) {
+    pixelCanvas.width = cols * w;
+    pixelCanvas.height = rows * h;
     fitPixelCanvas();
   }
-  pixelCtx.putImageData(new ImageData(new Uint8ClampedArray(px), settings.width, settings.height), 0, 0);
-  lastDrawn = px;
+  frames.forEach((px, i) => {
+    pixelCtx.putImageData(new ImageData(new Uint8ClampedArray(px), w, h), (i % cols) * w, Math.floor(i / cols) * h);
+  });
+  lastDrawn = frames;
   lastDrawnSize = size;
 }
 
 function fitPixelCanvas(): void {
   const wrap = $('pixelWrap');
-  const scale = Math.max(1, Math.floor(Math.min((wrap.clientWidth - 16) / settings.width, (wrap.clientHeight - 16) / settings.height)));
-  pixelCanvas.style.width = `${settings.width * scale}px`;
-  pixelCanvas.style.height = `${settings.height * scale}px`;
+  const { width: cw, height: ch } = pixelCanvas;
+  const scale = Math.max(1, Math.floor(Math.min((wrap.clientWidth - 16) / cw, (wrap.clientHeight - 16) / ch)));
+  pixelCanvas.style.width = `${cw * scale}px`;
+  pixelCanvas.style.height = `${ch * scale}px`;
 }
+
+// 전체 방향 보기에서 타일을 클릭하면 그 방향을 선택
+pixelCanvas.addEventListener('click', (e) => {
+  if (prefs.view !== 'all') return;
+  const r = pixelCanvas.getBoundingClientRect();
+  const cols = allCols(), rows = Math.ceil(settings.directions / cols);
+  const d = Math.floor(((e.clientY - r.top) / r.height) * rows) * cols + Math.floor(((e.clientX - r.left) / r.width) * cols);
+  if (d >= 0 && d < settings.directions && d !== curDir) {
+    curDir = d;
+    rebuildDirButtons();
+    scheduleStrip();
+  }
+});
+
 new ResizeObserver(fitPixelCanvas).observe($('pixelWrap'));
 
 const tl = $('tlControls');
@@ -273,6 +358,7 @@ let frameCountCtl: ReturnType<Form['number']>;
 let colorsCtl: ReturnType<Form['slider']>;
 let customCtl: ReturnType<Form['textarea']>;
 let toonCtl: ReturnType<Form['slider']>;
+let exportBtnEls: HTMLButtonElement[] = [];
 
 function refreshClipSelect(): void {
   clipSelect.replaceChildren(new Option('(정지 포즈)', '-1'));
@@ -321,6 +407,53 @@ function onSettingChanged(key: keyof Settings): void {
   setFrame(curFrame);
   updateInfo();
   scheduleStrip();
+  saveSoon();
+}
+
+/** 미리보기/3D 뷰 상단 컨트롤 */
+function buildViewControls(): void {
+  const mkSelect = (opts: [string, string][], value: string, onChange: (v: string) => void) => {
+    const sel = h('select', { class: 'mini' });
+    for (const [v, t] of opts) sel.appendChild(new Option(t, v));
+    sel.value = value;
+    sel.addEventListener('change', () => onChange(sel.value));
+    return sel;
+  };
+  const applyBg = () => {
+    const wrap = $('pixelWrap');
+    wrap.className = `bg-${prefs.bg}`;
+  };
+  $('pixelCtl').append(
+    mkSelect([['single', '선택한 방향'], ['all', '전체 방향']], prefs.view, (v) => {
+      prefs.view = v as Prefs['view'];
+      lastDrawnSize = '';
+      saveSoon();
+    }),
+    mkSelect(BG_LABELS, prefs.bg, (v) => {
+      prefs.bg = v as Prefs['bg'];
+      applyBg();
+      saveSoon();
+    }),
+  );
+  applyBg();
+  $('viewCtl').append(
+    button('3/4', 'small', () => stage.viewDefault()),
+    button('정면', 'small', () => stage.viewSprite(0)),
+    button('스프라이트 시점', 'small', () => stage.viewSprite(settings.pitch)),
+  );
+}
+
+function resetSettings(next: Settings): void {
+  Object.assign(settings, next);
+  form.syncAll();
+  curDir = Math.min(curDir, settings.directions - 1);
+  rebuildDirButtons();
+  updateAutoFrames();
+  updatePaletteUi();
+  setFrame(0);
+  updateInfo();
+  scheduleStrip();
+  saveSoon();
 }
 
 function buildPanel(): void {
@@ -397,15 +530,43 @@ function buildPanel(): void {
 
   const secExport = form.section(panel, '내보내기');
   form.select(secExport, '출력 배율', 'exportScale', [['1', '×1 (원본 픽셀)'], ['2', '×2'], ['4', '×4'], ['8', '×8']]);
+  form.number(secExport, '시트 간격(px)', 'sheetPadding', 0, 16);
   const exportBtns = h('div', { class: 'btn-row' });
-  const bSheet = button('시트 PNG + JSON', 'primary', () => void doExport('sheet'));
-  const bGif = button('GIF (현재 방향)', '', () => void doExport('gif'));
-  const bFrame = button('현재 프레임 PNG', '', () => void doExport('frame'));
-  exportBtns.append(bSheet, bGif, bFrame);
+  exportBtns.append(
+    button('시트 PNG + JSON', 'primary', () => void doExport('sheet')),
+    button('GIF (현재 방향)', '', () => void doExport('gif')),
+    button('프레임 PNG (zip)', '', () => void doExport('zip')),
+    button('현재 프레임 PNG', '', () => void doExport('frame')),
+  );
+  exportBtnEls = [...exportBtns.querySelectorAll('button')];
   secExport.append(
     exportBtns,
-    h('p', { class: 'hint' }, '시트: 행 = 방향, 열 = 프레임. JSON 은 Aseprite/TexturePacker(hash) 호환 형식입니다.'),
+    h('p', { class: 'hint' }, '시트: 행 = 방향, 열 = 프레임. JSON 은 Aseprite/TexturePacker(hash) 호환 형식입니다. 시트 간격은 프레임 둘레의 투명 여백으로, 텍스처 필터링 시 이웃 프레임 색 번짐을 막습니다.'),
   );
+
+  const secPreset = form.section(panel, '설정', false);
+  const settingsFile = h('input', { type: 'file', accept: '.json,application/json', hidden: '' });
+  settingsFile.addEventListener('change', async () => {
+    const f = settingsFile.files?.[0];
+    settingsFile.value = '';
+    if (!f) return;
+    try {
+      resetSettings(sanitizeSettings(JSON.parse(await f.text())));
+      setStatus(`설정을 불러왔습니다: ${f.name}`);
+    } catch {
+      setStatus('설정 파일을 읽을 수 없습니다.', 'err');
+    }
+  });
+  const presetBtns = h('div', { class: 'btn-row' });
+  presetBtns.append(
+    button('기본값으로', '', () => {
+      resetSettings({ ...DEFAULTS });
+      setStatus('설정을 기본값으로 되돌렸습니다.');
+    }),
+    button('설정 저장(.json)', '', () => downloadBlob(new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' }), 'sprite_settings.json')),
+    button('설정 불러오기', '', () => settingsFile.click()),
+  );
+  secPreset.append(presetBtns, settingsFile, h('p', { class: 'hint' }, '설정은 자동으로 저장되어 다음 실행 때 복원됩니다. 모델/모션은 저장되지 않습니다.'));
 
   updateAutoFrames();
   updatePaletteUi();
@@ -598,25 +759,32 @@ async function gatherFrames(dirs: number[]): Promise<Frames> {
   return out;
 }
 
-async function doExport(kind: 'sheet' | 'gif' | 'frame'): Promise<void> {
+async function doExport(kind: 'sheet' | 'gif' | 'frame' | 'zip'): Promise<void> {
   const s = settings;
   const clipName = stage.activeClip >= 0 ? stage.clips[stage.activeClip].name : 'pose';
   const base = safeName(`${stage.modelName}_${clipName}`);
   const n = frameCount();
+  const allDirs = Array.from({ length: s.directions }, (_, d) => d);
+  exportBtnEls.forEach((b) => (b.disabled = true));
   try {
     setStatus('내보내는 중…');
+    await nextFrame(); // 상태 문구가 먼저 그려지도록
     if (kind === 'sheet') {
-      const all = Array.from({ length: s.directions }, (_, d) => d);
-      const frames = await gatherFrames(all);
-      const sheet = buildSheet(frames, s.width, s.height, s.exportScale);
+      const frames = await gatherFrames(allDirs);
+      const sheet = buildSheet(frames, s.width, s.height, s.exportScale, s.sheetPadding);
       const png = `${base}_sheet.png`;
       downloadBlob(await toBlob(sheet), png);
       const json = buildJson({
         name: base, clip: safeName(clipName), image: png, w: s.width, h: s.height,
-        scale: s.exportScale, dirs: s.directions, count: n, fps: s.fps,
+        scale: s.exportScale, dirs: s.directions, count: n, fps: s.fps, pad: s.sheetPadding,
       });
       downloadBlob(new Blob([json], { type: 'application/json' }), `${base}_sheet.json`);
       setStatus(`시트 저장: ${png} (${sheet.width}×${sheet.height}px) + JSON`);
+    } else if (kind === 'zip') {
+      const frames = await gatherFrames(allDirs);
+      const zip = await buildZip(frames, s.width, s.height, s.exportScale, base);
+      downloadBlob(new Blob([zip as BlobPart], { type: 'application/zip' }), `${base}_frames.zip`);
+      setStatus(`zip 저장: ${base}_frames.zip (${s.directions * n}장)`);
     } else if (kind === 'gif') {
       const [row] = await gatherFrames([curDir]);
       const bytes = encodeGif(row, s.width, s.height, s.exportScale, s.fps);
@@ -633,6 +801,8 @@ async function doExport(kind: 'sheet' | 'gif' | 'frame'): Promise<void> {
   } catch (e) {
     console.error(e);
     setStatus(`내보내기 실패: ${(e as Error).message}`, 'err');
+  } finally {
+    exportBtnEls.forEach((b) => (b.disabled = false));
   }
 }
 
@@ -676,6 +846,7 @@ function tick(now: number): void {
 }
 
 buildPanel();
+buildViewControls();
 rebuildDirButtons();
 loadSample();
 requestAnimationFrame(tick);
