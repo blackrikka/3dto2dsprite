@@ -111,3 +111,10 @@ select.mini { width: auto; padding: 2px 4px; font-size: 12px; }
 #pixelWrap.bg-green { background: #00b140; }
 #pixelWrap.bg-magenta { background: #ff00ff; }
 #pixelWrap.bg-dark, #pixelWrap.bg-light, #pixelWrap.bg-green, #pixelWrap.bg-magenta { background-image: none; }
+
+#srcView {
+  display: none; position: absolute; inset: 0; width: 100%; height: 100%;
+  background-color: #2b2f39;
+  background-image: conic-gradient(#343945 25%, transparent 0 50%, #343945 0 75%, transparent 0);
+  background-size: 20px 20px;
+}

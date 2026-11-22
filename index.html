@@ -17,8 +17,8 @@
       <main>
         <div class="views">
           <section class="view">
-            <div class="label">3D 뷰 <small>드래그 회전 · 휠 확대 · 우클릭 이동</small><span class="grow"></span><span class="ctl" id="viewCtl"></span></div>
-            <div id="viewport"></div>
+            <div class="label"><span id="viewLabel">3D 뷰</span> <small id="viewHint">드래그 회전 · 휠 확대 · 우클릭 이동</small><span class="grow"></span><span class="ctl" id="viewCtl"></span></div>
+            <div id="viewport"><canvas id="srcView"></canvas></div>
           </section>
           <section class="view">
             <div class="label">도트 미리보기<span class="grow"></span><span class="ctl" id="pixelCtl"></span></div>
@@ -31,9 +31,10 @@
           <div id="strip"></div>
         </div>
       </main>
-      <div id="drop">파일을 놓아 불러오기<br /><small>.glb · .gltf · .fbx · .obj · .pmx · .pmd (MMD 는 텍스처 폴더째 놓으세요) · .vmd 모션</small></div>
+      <div id="drop">파일을 놓아 불러오기<br /><small>이미지(.png .jpg .gif …)를 놓으면 HD→SD 변환 모드 · .glb · .gltf · .fbx · .obj · .pmx · .pmd (MMD 는 텍스처 폴더째 놓으세요) · .vmd 모션</small></div>
     </div>
     <input type="file" id="fileModel" accept=".glb,.gltf,.fbx,.obj,.pmx,.pmd,.vmd,.bin,.png,.jpg,.jpeg,.webp,.bmp,.tga,.sph,.spa" multiple hidden />
+    <input type="file" id="fileImage" accept="image/*,.gif,.png,.jpg,.jpeg,.webp,.bmp" multiple hidden />
     <input type="file" id="fileFolder" webkitdirectory multiple hidden />
     <input type="file" id="fileMotion" accept=".glb,.gltf,.fbx,.vmd" multiple hidden />
     <script type="module" src="/src/main.ts"></script>

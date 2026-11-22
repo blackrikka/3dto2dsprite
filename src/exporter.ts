@@ -1,7 +1,6 @@
 import { GIFEncoder } from 'gifenc';
 import { zipSync } from 'fflate';
 import { RGB, medianCut } from './palette';
-import { dirName } from './types';
 
 export type Frames = Uint8ClampedArray[][]; // [direction][frame] RGBA
 
@@ -52,11 +51,17 @@ export function buildSheet(frames: Frames, w: number, h: number, scale: number, 
 }
 
 /** 프레임마다 PNG 한 장씩 담은 zip (방향별 폴더). */
-export async function buildZip(frames: Frames, w: number, h: number, scale: number, base: string): Promise<Uint8Array> {
+export async function buildZip(
+  frames: Frames,
+  w: number,
+  h: number,
+  scale: number,
+  base: string,
+  dirNames: string[],
+): Promise<Uint8Array> {
   const files: Record<string, Uint8Array> = {};
-  const dirs = frames.length;
-  for (let d = 0; d < dirs; d++) {
-    const dn = dirName(d, dirs);
+  for (let d = 0; d < frames.length; d++) {
+    const dn = dirNames[d];
     for (let i = 0; i < frames[d].length; i++) {
       const blob = await toBlob(buildSheet([[frames[d][i]]], w, h, scale));
       files[`${base}/${dn}/${base}_${dn}_${String(i).padStart(2, '0')}.png`] = new Uint8Array(await blob.arrayBuffer());
@@ -76,6 +81,7 @@ export interface SheetMeta {
   count: number;
   fps: number;
   pad: number;
+  dirNames: string[];
 }
 
 /** Aseprite/TexturePacker "hash" 형식과 호환되는 JSON (Phaser, Godot 플러그인, Unity 임포터 등에서 사용 가능) */
@@ -86,7 +92,7 @@ export function buildJson(m: SheetMeta): string {
   const frames: Record<string, unknown> = {};
   const tags: unknown[] = [];
   for (let d = 0; d < m.dirs; d++) {
-    const dn = dirName(d, m.dirs);
+    const dn = m.dirNames[d];
     for (let i = 0; i < m.count; i++) {
       frames[`${m.name}_${dn}_${String(i).padStart(2, '0')}`] = {
         frame: { x: i * cw + px, y: d * ch + px, w: fw, h: fh },
@@ -112,7 +118,7 @@ export function buildJson(m: SheetMeta): string {
         padding: px,
         frameTags: tags,
         layout: 'rows=directions, cols=frames',
-        directions: Array.from({ length: m.dirs }, (_, d) => dirName(d, m.dirs)),
+        directions: m.dirNames,
         fps: m.fps,
       },
     },

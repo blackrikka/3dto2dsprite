@@ -1,7 +1,23 @@
 export type PaletteMode = 'auto' | 'pico8' | 'gameboy' | 'sweetie16' | 'custom' | 'none';
 export type Shading = 'original' | 'toon';
 
+export type Source = 'model' | 'image';
+
 export interface Settings {
+  /** 입력 소스: 3D 모델 / HD 이미지 (저장되지 않고 항상 model 로 시작) */
+  source: Source;
+  // HD→SD 이미지 변환
+  imgCols: number;
+  imgRows: number;
+  imgAlgo: 'box' | 'mode' | 'nearest';
+  imgFit: 'contain' | 'cover' | 'stretch';
+  imgAlign: 'center' | 'bottom';
+  imgTrim: boolean;
+  imgMargin: number;
+  imgBgRemove: boolean;
+  imgBgTolerance: number;
+  imgBgEdge: number;
+  imgBgGlobal: boolean;
   // 스프라이트
   width: number;
   height: number;
@@ -40,6 +56,18 @@ export interface Settings {
 }
 
 export const DEFAULTS: Settings = {
+  source: 'model',
+  imgCols: 1,
+  imgRows: 1,
+  imgAlgo: 'box',
+  imgFit: 'contain',
+  imgAlign: 'bottom',
+  imgTrim: true,
+  imgMargin: 2,
+  imgBgRemove: false,
+  imgBgTolerance: 12,
+  imgBgEdge: 1,
+  imgBgGlobal: false,
   width: 64,
   height: 64,
   directions: 8,
