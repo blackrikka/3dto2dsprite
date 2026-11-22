@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CCDIKSolver, MMDAnimationHelper } from 'three-stdlib';
 import { Settings } from './types';
+import { applyProportions, scanBones, Part } from './proportions';
 import { MMD_MESH_NAME } from './loaders';
 
 export interface ClipEntry {
@@ -38,6 +39,26 @@ function makeInPlace(clip: THREE.AnimationClip): THREE.AnimationClip {
 }
 
 /**
+ * MMD SD 비율: 다리가 짧아진 만큼 センター(엉덩이)의 높이와 발 IK 목표(높이·보폭)도 줄여야
+ * IK 가 다리를 끝까지 뻗지 않고 자연스럽게 접힌다.
+ */
+function scaleMmdTracks(clip: THREE.AnimationClip, leg: number): void {
+  for (const t of clip.tracks) {
+    const m = /\.bones\[(.+)\]\.position$/.exec(t.name);
+    if (!m) continue;
+    const isCenter = m[1] === 'センター';
+    const isIk = /[ＩI][ＫK]$/i.test(m[1]);
+    if (!isCenter && !isIk) continue;
+    const v = t.values.slice();
+    for (let i = 0; i < v.length; i += 3) {
+      v[i + 1] *= leg;
+      if (isIk) v[i + 2] *= leg;
+    }
+    t.values = v;
+  }
+}
+
+/**
  * 3D 씬 관리: 모델/애니메이션, 뷰포트 카메라, 스프라이트용 직교 카메라와 오프스크린 렌더.
  */
 export class Stage {
@@ -71,7 +92,9 @@ export class Stage {
 
   private actionClip: THREE.AnimationClip | null = null;
   private action: THREE.AnimationAction | null = null;
-  private variants = new WeakMap<THREE.AnimationClip, THREE.AnimationClip>();
+  private variants = new WeakMap<THREE.AnimationClip, Map<string, THREE.AnimationClip>>();
+  /** 모델 정규화 직후의 holder 높이 (SD 바닥 맞춤의 기준) */
+  private baseHolderY = 0;
   private gradient: { steps: number; tex: THREE.DataTexture } | null = null;
   private vertexCount = 0;
   private bounds: { key: string; radius: number; cy: number } | null = null;
@@ -179,6 +202,7 @@ export class Stage {
     const box = new THREE.Box3().setFromObject(obj, true);
     const c = box.getCenter(new THREE.Vector3());
     this.holder.position.set(-c.x, -box.min.y, -c.z);
+    this.baseHolderY = this.holder.position.y;
     this.holder.updateMatrixWorld(true);
 
     this.vertexCount = 0;
@@ -273,6 +297,11 @@ export class Stage {
     return added;
   }
 
+  /** 현재 모델에서 부위별로 인식된 본 개수 */
+  scanProportionBones(): Record<Part, number> {
+    return this.model ? scanBones(this.holder) : { head: 0, torso: 0, arm: 0, leg: 0 };
+  }
+
   get duration(): number {
     return this.activeClip >= 0 ? this.clips[this.activeClip].clip.duration : 0;
   }
@@ -316,6 +345,8 @@ export class Stage {
 
     // 모션 액션
     this.ensureAction(s);
+    // MMD 는 클립을 바꿀 때 skeleton.pose() 로 스케일이 초기화되므로 반드시 그 뒤에 적용한다
+    if (this.model) applyProportions(this.holder, s.sdEnabled, { head: s.sdHead, torso: s.sdTorso, arm: s.sdArm, leg: s.sdLeg });
     this.ensureBounds(s);
     this.configureCamera(s);
   }
@@ -325,12 +356,20 @@ export class Stage {
     const entry = this.activeClip >= 0 ? this.clips[this.activeClip] : null;
     let clip: THREE.AnimationClip | null = null;
     if (entry) {
-      clip = entry.clip;
-      if (s.inPlace) {
-        let v = this.variants.get(entry.clip);
-        if (!v) this.variants.set(entry.clip, (v = makeInPlace(entry.clip)));
-        clip = v;
+      // 제자리/SD 설정에 따라 다른 클립 변형을 쓴다 (설정이 같으면 캐시)
+      const key = `${s.inPlace ? 1 : 0}|${s.sdEnabled ? (this.mmd ? s.sdLeg : 'on') : 0}|${this.mmd ? 'mmd' : ''}`;
+      let byKey = this.variants.get(entry.clip);
+      if (!byKey) this.variants.set(entry.clip, (byKey = new Map()));
+      let v = byKey.get(key);
+      if (!v) {
+        v = s.inPlace ? makeInPlace(entry.clip) : entry.clip.clone();
+        if (s.sdEnabled) {
+          v.tracks = v.tracks.filter((t) => !t.name.endsWith('.scale')); // 클립의 스케일 트랙이 SD 비율을 덮어쓰지 않게
+          if (this.mmd) scaleMmdTracks(v, s.sdLeg);
+        }
+        byKey.set(key, v);
       }
+      clip = v;
     }
     if (clip !== this.actionClip) {
       this.mixer.stopAllAction();
@@ -349,10 +388,12 @@ export class Stage {
 
   /** 애니메이션 전체에서 모델이 차지하는 영역(구)을 구해 카메라를 고정한다. */
   private ensureBounds(s: Settings): void {
-    const key = `${this.modelVersion}|${this.activeClip}|${s.inPlace}|${s.loop}`;
+    const sd = s.sdEnabled ? [s.sdHead, s.sdTorso, s.sdArm, s.sdLeg].join(',') : 'off';
+    const key = `${this.modelVersion}|${this.activeClip}|${s.inPlace}|${s.loop}|${sd}`;
     if (this.bounds?.key === key) return;
     const yaw = this.rig.rotation.y;
     this.rig.rotation.y = 0;
+    this.holder.position.y = this.baseHolderY;
     const precise = this.vertexCount < 250_000;
     const box = new THREE.Box3(), union = new THREE.Box3();
     const steps = this.action ? 16 : 1;
@@ -366,6 +407,13 @@ export class Stage {
       const mx = Math.max(Math.abs(box.min.x), Math.abs(box.max.x));
       const mz = Math.max(Math.abs(box.min.z), Math.abs(box.max.z));
       radiusXZ = Math.max(radiusXZ, Math.hypot(mx, mz));
+    }
+    if (s.sdEnabled && !union.isEmpty() && Math.abs(union.min.y) > 1e-6) {
+      // 다리가 짧아지면 발이 떠 보이므로, 모션 전체에서 가장 낮은 지점이 바닥(y=0)에 오도록 내린다
+      const dy = -union.min.y;
+      this.holder.position.y += dy;
+      this.holder.updateMatrixWorld(true);
+      union.translate(new THREE.Vector3(0, dy, 0));
     }
     this.rig.rotation.y = yaw;
     if (union.isEmpty()) {

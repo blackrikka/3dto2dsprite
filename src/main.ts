@@ -7,6 +7,7 @@ import { prepare, processFrame } from './pixelate';
 import { MAIN_EXT, ext, loadModelFiles, loadVmd } from './loaders';
 import { createSampleCharacter } from './sample';
 import { IMAGE_EXT, ImageSource } from './imagesource';
+import { SD_PRESETS, headCount } from './proportions';
 import { Frames, buildJson, buildSheet, buildZip, downloadBlob, encodeGif, safeName, toBlob } from './exporter';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -44,6 +45,11 @@ function sanitizeSettings(raw: unknown): Settings {
   if (!['contain', 'cover', 'stretch'].includes(out.imgFit)) out.imgFit = DEFAULTS.imgFit;
   if (!['center', 'bottom'].includes(out.imgAlign)) out.imgAlign = DEFAULTS.imgAlign;
   out.source = 'model'; // 입력 소스는 저장하지 않고 항상 3D 로 시작 (이미지는 매번 다시 불러와야 하므로)
+  const clampF = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
+  out.sdHead = clampF(out.sdHead, 1, 3.5);
+  out.sdTorso = clampF(out.sdTorso, 0.3, 1.2);
+  out.sdArm = clampF(out.sdArm, 0.3, 1.2);
+  out.sdLeg = clampF(out.sdLeg, 0.25, 1.2);
   if (![1, 4, 8, 16].includes(out.directions)) out.directions = DEFAULTS.directions;
   if (![1, 2, 4, 8].includes(out.exportScale)) out.exportScale = DEFAULTS.exportScale;
   if (!['auto', 'pico8', 'gameboy', 'sweetie16', 'custom', 'none'].includes(out.paletteMode)) out.paletteMode = DEFAULTS.paletteMode;
@@ -136,6 +142,7 @@ function rawKey(): string {
   return [
     stage.modelVersion, stage.activeClip, s.width, s.height, s.directions, frameCount(), s.loop,
     s.pitch, s.zoom, s.offsetX, s.offsetY, s.inPlace, s.shading, s.toonSteps,
+    s.sdEnabled, s.sdHead, s.sdTorso, s.sdArm, s.sdLeg,
     s.lightAzimuth, s.lightElevation, s.lightIntensity, s.ambient,
   ].join('|');
 }
@@ -390,6 +397,7 @@ let sourceCtl: ReturnType<Form['select']>;
 let dirCtl: ReturnType<Form['select']>;
 let autoFramesCtl: ReturnType<Form['check']>;
 let imgInfo: HTMLElement;
+let sdInfo: HTMLElement;
 const modelSections: HTMLElement[] = [];
 const imageSections: HTMLElement[] = [];
 let exportBtnEls: HTMLButtonElement[] = [];
@@ -442,6 +450,7 @@ function onSettingChanged(key: keyof Settings): void {
     onSourceChanged();
     return;
   }
+  if (key.startsWith('sd')) updateSdInfo();
   if (isImage()) {
     // 시트 칸 수가 바뀌면 방향/프레임 수가 달라진다
     curDir = Math.min(curDir, dirCount() - 1);
@@ -495,6 +504,7 @@ function resetSettings(next: Settings): void {
   updateAutoFrames();
   updatePaletteUi();
   updateSourceUi();
+  updateSdInfo();
   setFrame(0);
   updateInfo();
   scheduleStrip();
@@ -559,6 +569,34 @@ function buildPanel(): void {
   });
   form.check(secModel, '제자리 모션 (루트 이동 제거)', 'inPlace');
   form.check(secModel, '루프 모션', 'loop');
+
+  const secSd = form.section(panel, 'SD 비율 (7등신 → 2~3등신)');
+  modelSections.push(secSd.parentElement!);
+  form.check(secSd, 'SD 비율 적용', 'sdEnabled');
+  const sdPresets = h('div', { class: 'btn-row' });
+  for (const pr of SD_PRESETS) {
+    sdPresets.appendChild(
+      button(pr.label, 'small', () => {
+        if (pr.p) {
+          Object.assign(settings, { sdEnabled: true, sdHead: pr.p.head, sdTorso: pr.p.torso, sdArm: pr.p.arm, sdLeg: pr.p.leg });
+        } else {
+          settings.sdEnabled = false;
+        }
+        form.syncAll();
+        onSettingChanged('sdEnabled');
+      }),
+    );
+  }
+  secSd.appendChild(sdPresets);
+  form.slider(secSd, '머리 크기', 'sdHead', 1, 3.5, 0.05, (v) => `×${v.toFixed(2)}`);
+  form.slider(secSd, '몸통 크기', 'sdTorso', 0.3, 1.2, 0.01, (v) => `×${v.toFixed(2)}`);
+  form.slider(secSd, '팔 크기', 'sdArm', 0.3, 1.2, 0.01, (v) => `×${v.toFixed(2)}`);
+  form.slider(secSd, '다리 크기', 'sdLeg', 0.25, 1.2, 0.01, (v) => `×${v.toFixed(2)}`);
+  sdInfo = h('p', { class: 'hint' });
+  secSd.append(
+    sdInfo,
+    h('p', { class: 'hint' }, '본 이름으로 머리/몸통/팔/다리를 자동 인식해 부위별로 스케일합니다 (Mixamo, MMD, 일반 리그). 다리가 짧아지면 발이 바닥에 닿도록 자동으로 내립니다. 본이 없는 정적 메시에는 적용되지 않습니다.'),
+  );
 
   const secSprite = form.section(panel, '스프라이트');
   const presets = h('div', { class: 'btn-row' });
@@ -657,6 +695,19 @@ function buildPanel(): void {
   updateAutoFrames();
   updatePaletteUi();
   updateSourceUi();
+  updateSdInfo();
+}
+
+/** SD 비율 안내: 대략의 등신 수와 인식된 본 개수 */
+function updateSdInfo(): void {
+  if (!sdInfo) return;
+  const c = stage.scanProportionBones();
+  const s = settings;
+  const heads = s.sdEnabled ? headCount({ head: s.sdHead, torso: s.sdTorso, arm: s.sdArm, leg: s.sdLeg }) : 7;
+  const missing = c.head === 0 || c.leg === 0;
+  sdInfo.textContent = `${s.sdEnabled ? '현재 약' : '원본 약'} ${heads.toFixed(1)}등신 · 인식된 본: 머리 ${c.head} · 몸통 ${c.torso} · 팔 ${c.arm} · 다리 ${c.leg}` +
+    (missing ? ' — ⚠ 머리/다리 본을 찾지 못해 일부가 적용되지 않습니다.' : '');
+  sdInfo.className = missing ? 'hint warn' : 'hint';
 }
 
 // ---------------------------------------------------------------------------
@@ -757,6 +808,7 @@ async function openImages(files: File[]): Promise<void> {
 // ---------------------------------------------------------------------------
 function afterModelChange(): void {
   $('modelName').textContent = `모델: ${stage.modelName}`;
+  updateSdInfo();
   refreshClipSelect();
   curFrame = 0;
   updateAutoFrames();

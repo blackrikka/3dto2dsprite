@@ -32,6 +32,12 @@ export interface Settings {
   offsetX: number;
   offsetY: number;
   inPlace: boolean;
+  // SD(치비) 비율 — 3D 모델의 본을 부위별로 스케일
+  sdEnabled: boolean;
+  sdHead: number;
+  sdTorso: number;
+  sdArm: number;
+  sdLeg: number;
   // 셰이딩/조명
   shading: Shading;
   toonSteps: number;
@@ -80,6 +86,11 @@ export const DEFAULTS: Settings = {
   offsetX: 0,
   offsetY: 0,
   inPlace: true,
+  sdEnabled: false,
+  sdHead: 1.9,
+  sdTorso: 0.7,
+  sdArm: 0.7,
+  sdLeg: 0.58,
   shading: 'toon',
   toonSteps: 3,
   lightAzimuth: -35,
