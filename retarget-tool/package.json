@@ -1,0 +1,21 @@
+{
+  "name": "retarget-tool",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "모델과 모션을 넣어 본을 대응시키고 리타깃해 GLB 로 내보내는 도구",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "three": "^0.187.0",
+    "three-stdlib": "^2.36.1"
+  },
+  "devDependencies": {
+    "@types/three": "^0.187.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8"
+  }
+}

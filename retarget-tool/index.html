@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>리타깃 툴</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%234fc3f7'/%3E%3Cpath d='M3 12 L8 3 L13 12 Z' fill='%23fff'/%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <div id="app">
+      <header>
+        <h1>리타깃 툴 <small>모델 + 모션 → 본 대응 → GLB</small></h1>
+        <div class="actions">
+          <button id="btnSaveMap" disabled>매핑 저장</button>
+          <button id="btnLoadMap">매핑 불러오기</button>
+          <button id="btnExport" class="primary" disabled>GLB 내보내기</button>
+        </div>
+        <div id="status" role="status"></div>
+      </header>
+      <aside id="left"></aside>
+      <main>
+        <div id="stage"><canvas id="view"></canvas></div>
+        <div id="playbar"></div>
+      </main>
+      <aside id="right"></aside>
+    </div>
+    <input type="file" id="fileMapLoad" accept=".json,application/json" hidden />
+    <input type="file" id="fileHidden" multiple hidden />
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
