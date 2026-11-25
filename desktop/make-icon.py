@@ -46,6 +46,29 @@ for n, blob in zip(sizes, blobs):
     off += len(blob)
 ico += b''.join(blobs)
 open(os.path.join(OUT, 'icon.ico'), 'wb').write(ico)
+
+# NSIS(설치 프로그램 아이콘)는 PNG 압축 ICO 를 못 읽으므로 BMP(DIB) 형식의 ICO 도 만든다
+def dib(n):
+    img = scaled(n)
+    px = img.load()
+    header = struct.pack('<IiiHHIIiiII', 40, n, n * 2, 1, 32, 0, 0, 0, 0, 0, 0)
+    pixels = b''
+    for y in range(n - 1, -1, -1):          # 아래→위
+        for x in range(n):
+            r, g, b, a = px[x, y]
+            pixels += struct.pack('<BBBB', b, g, r, a)
+    mask_row = ((n + 31) // 32) * 4
+    return header + pixels + bytes(mask_row * n)  # AND 마스크는 0 (알파 사용)
+
+legacy_sizes = [16, 32, 48]
+dibs = [dib(n) for n in legacy_sizes]
+ico2 = struct.pack('<HHH', 0, 1, len(legacy_sizes))
+off = 6 + 16 * len(legacy_sizes)
+for n, blob in zip(legacy_sizes, dibs):
+    ico2 += struct.pack('<BBBBHHII', n, n, 0, 0, 1, 32, len(blob), off)
+    off += len(blob)
+ico2 += b''.join(dibs)
+open(os.path.join(OUT, 'icon_legacy.ico'), 'wb').write(ico2)
 open(os.path.join(OUT, 'icon32.rgba'), 'wb').write(scaled(32).tobytes())
 scaled(256).save(os.path.join(OUT, 'icon256.png'))
 print('ok', len(ico))

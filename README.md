@@ -13,6 +13,18 @@ npm run dev      # http://localhost:5173
 npm run build    # dist/ 에 정적 파일 생성 (아무 정적 호스팅에 올리면 됩니다)
 ```
 
+## 설치 (Windows)
+
+**`release/Sprite3D2D-Setup.exe`** 를 실행하면 설치됩니다 (약 0.7MB, 관리자 권한 불필요).
+
+- 설치 위치: `%LOCALAPPDATA%\Programs\Sprite3D2D` (설치 중 변경 가능). 시작 메뉴에 바로가기가 만들어지고, 바탕화면 바로가기는 선택 항목입니다.
+- 제거: Windows "설정 → 앱" 에서 제거하거나 설치 폴더의 `Uninstall.exe`. 저장된 설정(`%LOCALAPPDATA%\sprite3d2d`)을 지울지 물어봅니다.
+- 업데이트: 새 Setup.exe 를 그대로 다시 실행하면 같은 위치에 덮어씁니다 (실행 중인 프로그램은 먼저 닫아 주세요).
+- 무인 설치: `Sprite3D2D-Setup.exe /S` (설치 위치 지정: `/S /D=C:\원하는\경로`, 이 옵션은 맨 마지막에 둡니다). 무인 제거: `Uninstall.exe /S`.
+- Microsoft Edge WebView2 런타임이 필요합니다. Windows 11 과 최신 Windows 10 에는 기본 설치되어 있고, 없으면 설치 중에 다운로드 페이지를 안내합니다.
+- 설치 없이 쓰려면 `release/windows-x64/` 의 `sprite3d2d.exe` + `WebView2Loader.dll` (또는 `windows-x64.zip`)을 같은 폴더에 두고 실행하세요.
+- 설치 프로그램 다시 만들기 (Linux, `nsis` 필요): `./desktop/build-windows.sh && ./desktop/build-installer.sh`
+
 ## Windows 실행 파일 (Rust)
 
 `release/windows-x64/` 에 미리 빌드된 `sprite3d2d.exe` 가 들어 있습니다 (`windows-x64.zip` 도 동일).
