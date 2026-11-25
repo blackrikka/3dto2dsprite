@@ -75,6 +75,16 @@ Section "${APP_NAME} (필수)" SecMain
   SectionIn RO
   SetOutPath "$INSTDIR"
   SetOverwrite on
+
+  ; 업그레이드: 실행 중인 프로그램은 파일이 잠겨 덮어쓸 수 없으므로 먼저 확인한다
+  retry_replace:
+  IfFileExists "$INSTDIR\${APP_EXE}" 0 replace_ok
+    ClearErrors
+    Delete "$INSTDIR\${APP_EXE}"
+    IfErrors 0 replace_ok
+    MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION "${APP_NAME} 이(가) 실행 중입니다.$\n프로그램을 닫은 뒤 '다시 시도'를 누르세요." /SD IDCANCEL IDRETRY retry_replace
+    Abort "실행 중인 프로그램을 닫은 뒤 설치 프로그램을 다시 실행하세요."
+  replace_ok:
   File "..\release\windows-x64\${APP_EXE}"
   File "..\release\windows-x64\WebView2Loader.dll"
   File "icon\icon.ico"
