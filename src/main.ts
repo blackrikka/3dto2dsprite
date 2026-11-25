@@ -140,13 +140,15 @@ function rawKey(): string {
     ].join('|');
   }
   return [
-    stage.modelVersion, stage.activeClip, s.width, s.height, s.directions, frameCount(), s.loop,
+    stage.modelVersion, texVersion, stage.activeClip, s.width, s.height, s.directions, frameCount(), s.loop,
     s.pitch, s.zoom, s.offsetX, s.offsetY, s.inPlace, s.shading, s.toonSteps,
     s.sdEnabled, s.sdHead, s.sdTorso, s.sdArm, s.sdLeg,
     s.lightAzimuth, s.lightElevation, s.lightIntensity, s.ambient,
   ].join('|');
 }
 
+/** 텍스처 비동기 로딩이 끝날 때마다 증가 → 캐시된(텍스처 없는) 프레임을 버리고 다시 그린다 */
+let texVersion = 0;
 let curRawKey = '';
 const rawCache = new Map<string, Uint8ClampedArray>();
 let procKey = '';
@@ -567,6 +569,13 @@ function buildPanel(): void {
     updateInfo();
     scheduleStrip();
   });
+  secModel.appendChild(
+    button('텍스처 추가 (모델 다시 불러오기)', 'small', () => {
+      if (!lastModelFiles.length) return setStatus('먼저 모델 파일을 불러오세요.', 'warn');
+      $<HTMLInputElement>('fileTex').click();
+    }),
+  );
+  secModel.appendChild(h('p', { class: 'hint' }, '텍스처가 하얗게 나오면: FBX/모델과 같은 폴더의 텍스처 파일을 함께 선택하거나, 위 "폴더 열기"로 폴더째 불러오세요. .tga 는 지원하고 .psd/.tif/.dds 는 PNG 로 변환해야 합니다.'));
   form.check(secModel, '제자리 모션 (루트 이동 제거)', 'inPlace');
   form.check(secModel, '루프 모션', 'loop');
 
@@ -868,6 +877,19 @@ async function addMotionFiles(files: File[]): Promise<void> {
   else setStatus(`모션 추가: ${c.name} (트랙 ${c.matched}/${c.total} 매칭)`, c.matched < c.total * 0.5 ? 'warn' : '');
 }
 
+/** 텍스처 경고 문구 (없으면 빈 문자열) */
+function textureWarning(L: { missing: string[]; unsupported: string[] }): string {
+  const parts: string[] = [];
+  const list = (a: string[]) => `${a.slice(0, 3).join(', ')}${a.length > 3 ? ` 외 ${a.length - 3}개` : ''}`;
+  const miss = L.missing.filter((n) => !L.unsupported.includes(n));
+  if (miss.length) parts.push(`텍스처 ${miss.length}개를 찾지 못했습니다 (${list(miss)}) — 텍스처 파일을 함께 선택하거나 "폴더 열기"/"텍스처 추가"를 쓰세요`);
+  if (L.unsupported.length) parts.push(`${list(L.unsupported)} 는 브라우저가 읽을 수 없는 형식입니다 — PNG 로 변환해 주세요`);
+  return parts.length ? `⚠ ${parts.join(' · ')}` : '';
+}
+
+/** "텍스처 추가"용: 마지막으로 연 모델 파일들 (텍스처를 더해 다시 불러온다) */
+let lastModelFiles: File[] = [];
+
 async function openFiles(files: File[], asMotion = false): Promise<void> {
   if (!files.length) return;
   setStatus('불러오는 중…');
@@ -886,7 +908,14 @@ async function openFiles(files: File[], asMotion = false): Promise<void> {
       await addMotionFiles(vmds); // VMD 만 선택한 경우: 현재 MMD 모델에 모션으로 추가
       return;
     }
-    const L = await loadModelFiles(files);
+    const L = await loadModelFiles(
+      files,
+      (m) => setStatus(m, 'warn'),
+      () => {
+        texVersion++;
+        scheduleStrip();
+      },
+    );
     if (!L.hasMesh) {
       if (L.animations.length) {
         await addMotionFiles(files.filter((f) => /\.(glb|gltf|fbx)$/i.test(f.name)));
@@ -895,6 +924,7 @@ async function openFiles(files: File[], asMotion = false): Promise<void> {
       throw new Error('메시도 모션도 찾지 못했습니다.');
     }
     stage.setModel(L.object, L.animations, L.name);
+    lastModelFiles = files.filter((f) => !/\.vmd$/i.test(f.name));
     if (isImage()) {
       settings.source = 'model';
       sourceCtl.sync();
@@ -904,9 +934,12 @@ async function openFiles(files: File[], asMotion = false): Promise<void> {
     const hint = L.mmd
       ? ' (MMD: 텍스처가 안 보이면 "폴더 열기"로 모델 폴더째 불러오세요. 모션은 .vmd 를 "모션 추가"로)'
       : '';
+    const warn = textureWarning(L);
     setStatus(
       `불러옴: ${L.name} · 모션 ${L.animations.length}개` +
-        (L.animations.length ? '' : hint || ' (모션이 없으면 "모션 추가"로 FBX/GLB 모션을 불러오세요)'),
+        (L.animations.length ? '' : hint || ' (모션이 없으면 "모션 추가"로 FBX/GLB 모션을 불러오세요)') +
+        (warn ? `  ${warn}` : ''),
+      warn ? 'warn' : '',
     );
     if (L.mmd && vmds.length) await addMotionFiles(vmds);
   } catch (e) {
@@ -919,6 +952,12 @@ const topActions = $('topActions');
 const fileModel = $<HTMLInputElement>('fileModel');
 const fileMotion = $<HTMLInputElement>('fileMotion');
 const fileFolder = $<HTMLInputElement>('fileFolder');
+const fileTex = $<HTMLInputElement>('fileTex');
+fileTex.addEventListener('change', () => {
+  const extra = [...(fileTex.files ?? [])];
+  fileTex.value = '';
+  if (extra.length) void openFiles([...lastModelFiles, ...extra]); // 같은 모델 + 추가 텍스처로 다시 불러온다
+});
 const fileImage = $<HTMLInputElement>('fileImage');
 fileImage.addEventListener('change', () => {
   void openImages([...(fileImage.files ?? [])]);
