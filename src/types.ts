@@ -41,6 +41,10 @@ export interface Settings {
   // 셰이딩/조명
   shading: Shading;
   toonSteps: number;
+  /** 툰 가장 어두운 단계의 밝기 (0=완전히 어둡게, 클수록 그림자가 옅다) */
+  toonShadow: number;
+  /** 재질의 발광색(emissive)을 무시한다 — MMD 앰비언트/일부 FBX 의 발광색이 전체를 뿌옇게 덮는 것을 막는다 */
+  ignoreEmissive: boolean;
   lightAzimuth: number;
   lightElevation: number;
   lightIntensity: number;
@@ -93,6 +97,8 @@ export const DEFAULTS: Settings = {
   sdLeg: 0.58,
   shading: 'toon',
   toonSteps: 3,
+  toonShadow: 0.33,
+  ignoreEmissive: true,
   lightAzimuth: -35,
   lightElevation: 40,
   lightIntensity: 2.4,

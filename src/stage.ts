@@ -95,7 +95,7 @@ export class Stage {
   private variants = new WeakMap<THREE.AnimationClip, Map<string, THREE.AnimationClip>>();
   /** 모델 정규화 직후의 holder 높이 (SD 바닥 맞춤의 기준) */
   private baseHolderY = 0;
-  private gradient: { steps: number; tex: THREE.DataTexture } | null = null;
+  private gradient: { steps: number; floor: number; tex: THREE.DataTexture } | null = null;
   private vertexCount = 0;
   private bounds: { key: string; radius: number; cy: number } | null = null;
 
@@ -212,6 +212,17 @@ export class Stage {
         this.vertexCount += m.geometry.attributes.position?.count ?? 0;
         m.frustumCulled = false; // 스키닝 변형 시 컬링 오류 방지
         m.userData.orig = m.material;
+        // 일부 로더(MMD 등)는 텍스처의 색 공간을 지정하지 않아 선형으로 해석되고, 그러면 색이 하얗게 번져 뿌옇게 보인다
+        for (const mat of Array.isArray(m.material) ? m.material : [m.material]) {
+          const sm = mat as THREE.MeshStandardMaterial;
+          for (const tex of [sm.map, sm.emissiveMap]) {
+            if (tex && tex.colorSpace === THREE.NoColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
+          }
+        }
+        for (const mat of Array.isArray(m.material) ? m.material : [m.material]) {
+          const em = (mat as THREE.MeshStandardMaterial).emissive;
+          if (em) mat.userData.emissiveBackup = em.clone();
+        }
         const toon = (src: THREE.Material) => {
           const s = src as THREE.MeshStandardMaterial;
           return new THREE.MeshToonMaterial({
@@ -223,10 +234,12 @@ export class Stage {
             opacity: s.opacity,
             alphaTest: s.alphaTest,
             emissive: s.emissive ? s.emissive.clone() : new THREE.Color(0),
+            emissiveIntensity: s.emissiveIntensity ?? 1,
             emissiveMap: s.emissiveMap ?? null,
           });
         };
         m.userData.toon = Array.isArray(m.material) ? m.material.map(toon) : toon(m.material);
+        for (const t of Array.isArray(m.userData.toon) ? m.userData.toon : [m.userData.toon]) t.userData.emissiveBackup = t.emissive.clone();
       }
     });
 
@@ -308,33 +321,46 @@ export class Stage {
 
   // --- 설정 반영 -----------------------------------------------------------
 
-  private gradientMap(steps: number): THREE.DataTexture {
-    if (this.gradient?.steps === steps) return this.gradient.tex;
+  /** 툰 음영 단계 텍스처. floor = 가장 어두운 단계의 밝기, 가장 밝은 단계는 1. */
+  private gradientMap(steps: number, floor: number): THREE.DataTexture {
+    if (this.gradient?.steps === steps && this.gradient.floor === floor) return this.gradient.tex;
     this.gradient?.tex.dispose();
     const res = steps * 8;
     const data = new Uint8Array(res);
     for (let k = 0; k < res; k++) {
       const dotNL = ((k + 0.5) / res) * 2 - 1;
       const band = Math.min(steps - 1, Math.floor(Math.max(dotNL, 0) * steps));
-      data[k] = Math.round((255 * (band + 1)) / steps);
+      data[k] = Math.round(255 * (floor + (1 - floor) * (band / Math.max(1, steps - 1))));
     }
     const tex = new THREE.DataTexture(data, res, 1, THREE.RedFormat);
     tex.minFilter = tex.magFilter = THREE.NearestFilter;
     tex.generateMipmaps = false;
     tex.needsUpdate = true;
-    this.gradient = { steps, tex };
+    this.gradient = { steps, floor, tex };
     return tex;
   }
 
   configure(s: Settings): void {
     // 셰이딩
-    const grad = this.gradientMap(s.toonSteps);
+    const grad = this.gradientMap(s.toonSteps, s.toonShadow);
+    const applyEmissive = (mat: THREE.Material) => {
+      const em = (mat as THREE.MeshStandardMaterial).emissive;
+      if (!em) return;
+      const bk = (mat.userData.emissiveBackup as THREE.Color | undefined) ?? em.clone();
+      mat.userData.emissiveBackup = bk;
+      em.copy(s.ignoreEmissive ? new THREE.Color(0, 0, 0) : bk);
+    };
     this.model?.traverse((o) => {
       const m = o as THREE.Mesh;
       if (!m.isMesh) return;
       const toon = m.userData.toon as THREE.MeshToonMaterial | THREE.MeshToonMaterial[];
-      (Array.isArray(toon) ? toon : [toon]).forEach((t) => (t.gradientMap = grad));
-      m.material = s.shading === 'toon' ? toon : m.userData.orig;
+      (Array.isArray(toon) ? toon : [toon]).forEach((t) => {
+        t.gradientMap = grad;
+        applyEmissive(t);
+      });
+      const orig = m.userData.orig as THREE.Material | THREE.Material[];
+      (Array.isArray(orig) ? orig : [orig]).forEach(applyEmissive);
+      m.material = s.shading === 'toon' ? toon : orig;
     });
 
     // 조명 (카메라 기준으로 고정)

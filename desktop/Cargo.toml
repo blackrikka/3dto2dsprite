@@ -1,6 +1,6 @@
 [package]
 name = "sprite3d2d"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 description = "3D 모델+모션 → 2D 도트 스프라이트 변환 편집기 (데스크톱 셸)"
 

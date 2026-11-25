@@ -46,6 +46,7 @@ function sanitizeSettings(raw: unknown): Settings {
   if (!['center', 'bottom'].includes(out.imgAlign)) out.imgAlign = DEFAULTS.imgAlign;
   out.source = 'model'; // 입력 소스는 저장하지 않고 항상 3D 로 시작 (이미지는 매번 다시 불러와야 하므로)
   const clampF = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
+  out.toonShadow = clampF(out.toonShadow, 0, 0.6);
   out.sdHead = clampF(out.sdHead, 1, 3.5);
   out.sdTorso = clampF(out.sdTorso, 0.3, 1.2);
   out.sdArm = clampF(out.sdArm, 0.3, 1.2);
@@ -142,7 +143,7 @@ function rawKey(): string {
   return [
     stage.modelVersion, texVersion, stage.activeClip, s.width, s.height, s.directions, frameCount(), s.loop,
     s.pitch, s.zoom, s.offsetX, s.offsetY, s.inPlace, s.shading, s.toonSteps,
-    s.sdEnabled, s.sdHead, s.sdTorso, s.sdArm, s.sdLeg,
+    s.sdEnabled, s.sdHead, s.sdTorso, s.sdArm, s.sdLeg, s.toonShadow, s.ignoreEmissive,
     s.lightAzimuth, s.lightElevation, s.lightIntensity, s.ambient,
   ].join('|');
 }
@@ -395,6 +396,7 @@ let frameCountCtl: ReturnType<Form['number']>;
 let colorsCtl: ReturnType<Form['slider']>;
 let customCtl: ReturnType<Form['textarea']>;
 let toonCtl: ReturnType<Form['slider']>;
+let toonShadowCtl: ReturnType<Form['slider']>;
 let sourceCtl: ReturnType<Form['select']>;
 let dirCtl: ReturnType<Form['select']>;
 let autoFramesCtl: ReturnType<Form['check']>;
@@ -438,6 +440,7 @@ function updatePaletteUi(): void {
   colorsCtl.row.style.display = settings.paletteMode === 'auto' ? '' : 'none';
   customCtl.row.style.display = settings.paletteMode === 'custom' ? '' : 'none';
   toonCtl.row.style.display = settings.shading === 'toon' ? '' : 'none';
+  toonShadowCtl.row.style.display = settings.shading === 'toon' ? '' : 'none';
 }
 
 function onSettingChanged(key: keyof Settings): void {
@@ -638,6 +641,8 @@ function buildPanel(): void {
   modelSections.push(secLight.parentElement!);
   form.select(secLight, '셰이딩', 'shading', [['toon', '툰 (단계 음영)'], ['original', '원본 재질']]);
   toonCtl = form.slider(secLight, '음영 단계', 'toonSteps', 2, 6, 1);
+  toonShadowCtl = form.slider(secLight, '그림자 밝기', 'toonShadow', 0, 0.6, 0.01, (v) => v.toFixed(2));
+  form.check(secLight, '재질 발광색 무시 (뿌옇거나 하얗게 보일 때)', 'ignoreEmissive');
   form.slider(secLight, '광원 방향', 'lightAzimuth', -180, 180, 1, (v) => `${v}°`);
   form.slider(secLight, '광원 높이', 'lightElevation', 0, 89, 1, (v) => `${v}°`);
   form.slider(secLight, '광원 세기', 'lightIntensity', 0, 6, 0.1, (v) => v.toFixed(1));

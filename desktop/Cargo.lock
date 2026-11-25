@@ -1892,7 +1892,7 @@ dependencies = [
 
 [[package]]
 name = "sprite3d2d"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "mime_guess",
  "rust-embed",
