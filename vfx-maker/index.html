@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VFX 메이커</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23ff8a3d'/%3E%3Crect x='7' y='2' width='2' height='12' fill='%23fff'/%3E%3Crect x='2' y='7' width='12' height='2' fill='%23fff'/%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <div id="app">
+      <header>
+        <h1>VFX 메이커 <small>도트 이펙트 → 스프라이트 시트</small></h1>
+        <div class="actions" id="topActions"></div>
+        <div id="status" role="status"></div>
+      </header>
+      <aside id="panel"></aside>
+      <main>
+        <section class="view">
+          <div class="label">미리보기<small id="previewInfo"></small><span class="grow"></span><span class="ctl" id="previewCtl"></span></div>
+          <div id="stage">
+            <div id="canvasBox"><canvas id="pixel"></canvas><canvas id="gizmo"></canvas></div>
+          </div>
+        </section>
+        <div id="timeline">
+          <div class="controls" id="tlControls"></div>
+          <div id="strip"></div>
+        </div>
+      </main>
+    </div>
+    <input type="file" id="fileLoad" accept=".json,application/json" hidden />
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

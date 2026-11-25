@@ -13,6 +13,8 @@ npm run dev      # http://localhost:5173
 npm run build    # dist/ 에 정적 파일 생성 (아무 정적 호스팅에 올리면 됩니다)
 ```
 
+> 이 저장소에는 별개의 앱 **[VFX 메이커](vfx-maker/README.md)** (도트 파티클 이펙트 → 스프라이트 시트 에디터)도 들어 있습니다. 설치 프로그램: `vfx-maker/release/VFXMaker-Setup.exe`
+
 ## 설치 (Windows)
 
 **`release/Sprite3D2D-Setup.exe`** 를 실행하면 설치됩니다 (약 0.7MB, 관리자 권한 불필요).

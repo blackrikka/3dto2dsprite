@@ -2,3 +2,4 @@ node_modules
 dist
 *.log
 desktop/target
+vfx-maker/desktop/target
