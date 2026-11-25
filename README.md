@@ -14,6 +14,7 @@ npm run build    # dist/ 에 정적 파일 생성 (아무 정적 호스팅에 �
 ```
 
 > 이 저장소에는 별개의 앱 **[VFX 메이커](vfx-maker/README.md)** (도트 파티클 이펙트 → 스프라이트 시트 에디터)도 들어 있습니다. 설치 프로그램: `vfx-maker/release/VFXMaker-Setup.exe`
+> 또 **[리타깃 툴](retarget-tool/README.md)** (모델 + 모션 → 본 대응 → GLB 내보내기)도 들어 있습니다. 설치 프로그램: `retarget-tool/release/RetargetTool-Setup.exe`
 
 ## 설치 (Windows)
 

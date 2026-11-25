@@ -16,6 +16,15 @@ npm run preview   # dist/ 미리보기
 `dist/index.html` 을 브라우저에서 `file://` 로 직접 열어도 동작합니다 (단일 스크립트 번들).
 `node_modules/` 와 `dist/` 는 git 에서 제외됩니다.
 
+## 설치 (Windows)
+
+- **설치**: `release/RetargetTool-Setup.exe` (관리자 권한 불필요, 사용자 폴더 `%LOCALAPPDATA%\Programs\RetargetTool`, 시작 메뉴/바탕화면 바로가기, 앱 제거 등록, 무인 설치 `/S`).
+- **설치 없이**: `release/windows-x64/` 의 `retargettool.exe` + `WebView2Loader.dll` 을 같은 폴더에 두고 실행 (`windows-x64.zip` 도 같은 내용). Edge WebView2 런타임 필요 (Windows 11/최신 10 은 기본 설치).
+- 내보낸 파일(GLB, 매핑 JSON)은 "다운로드" 폴더에 저장됩니다.
+- 저장된 설정(WebView2 데이터)은 `%LOCALAPPDATA%\retargettool` 에 있으며, 제거할 때 지울지 물어봅니다.
+- 다시 빌드 (Linux, `mingw-w64`·`nsis` 필요): `./desktop/build-windows.sh && ./desktop/build-installer.sh`
+- 설치 프로그램과 exe 는 Linux 에서 크로스 컴파일했으며 Windows 에서 직접 실행해 검증하지는 못했습니다.
+
 ## 사용법
 
 1. **① 모델 (타깃)**: `.glb .gltf .fbx .pmx .pmd` 를 놓거나 클릭. glTF 의 `.bin`, 텍스처 등 부속 파일은 함께 선택합니다.

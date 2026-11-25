@@ -3,3 +3,4 @@ dist
 *.log
 desktop/target
 vfx-maker/desktop/target
+retarget-tool/desktop/target
